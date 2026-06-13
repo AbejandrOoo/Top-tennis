@@ -20,7 +20,8 @@ class DashboardController extends Controller
             return redirect()->route('admin.dashboard');
         }
         
-        $fecha = $request->input('fecha', Carbon::now()->format('Y-m-d'));
+        $fechaInput = $request->input('fecha');
+        $fecha = $fechaInput ?: Carbon::now()->format('Y-m-d');
         $horaInicioInput = $request->input('hora');
         $duracionInput = (int) $request->input('duracion', 1);
 
@@ -29,7 +30,15 @@ class DashboardController extends Controller
         if (!$horaInicioInput) {
             if ($fecha === Carbon::now()->format('Y-m-d')) {
                 $horaSugerida = Carbon::now()->addHour()->hour;
-                $horaInicioInput = ($horaSugerida >= 6 && $horaSugerida <= 22) ? sprintf('%02d:00', $horaSugerida) : '06:00';
+                if ($horaSugerida >= 6 && $horaSugerida <= 22) {
+                    $horaInicioInput = sprintf('%02d:00', $horaSugerida);
+                } else {
+                    // Si ya es muy tarde (ej. después de las 22:00), pasamos a mañana si el usuario no forzó la fecha
+                    if (!$fechaInput) {
+                        $fecha = Carbon::now()->addDay()->format('Y-m-d');
+                    }
+                    $horaInicioInput = '06:00';
+                }
             } else {
                 $horaInicioInput = '06:00';
             }
@@ -145,7 +154,11 @@ class DashboardController extends Controller
                 'total' => $totalCobrar, 'monto_pagado' => $request->metodo_pago === 'yape' ? $totalCobrar : 0.00
             ]);
 
-            return redirect()->route('dashboard')->with('success', $request->metodo_pago === 'yape' ? '¡Pre-reserva exitosa! Tienes 30 minutos para validarla.' : '¡Reserva en caja registrada!');
+            return redirect()->route('dashboard', [
+                'fecha' => $request->fecha, 
+                'hora' => $request->hora,
+                'duracion' => $request->duracion
+            ])->with('success', $request->metodo_pago === 'yape' ? '¡Pre-reserva exitosa! Tienes 30 minutos para validarla.' : '¡Reserva en caja registrada!');
         });
     }
 
