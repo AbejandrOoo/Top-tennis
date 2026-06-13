@@ -7,6 +7,7 @@
         canchaId: '', 
         precioSeleccionado: '0.00',
         reservaId: '',
+        reprogramarUrlBase: '{{ url('/reservas') }}',
         metodoPago: 'yape',
         horaSeleccionada: '{{ request('hora', \Carbon\Carbon::now()->addHour()->format('H:00')) }}',
         duracionSeleccionada: '{{ request('duracion', '1') }}',
@@ -260,7 +261,7 @@
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div @click="showReprogramarModal = false" class="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
-                <form method="POST" :action="'/reservas/' + reservaId + '/reprogramar'" class="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
+                <form method="POST" :action="reprogramarUrlBase + '/' + reservaId + '/reprogramar'" class="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform sm:my-8 sm:align-middle sm:max-w-md sm:w-full">
                     @csrf
                     <div class="bg-[#0b3b24] px-6 py-4 border-b-4 border-[#7cb518]"><h3 class="text-lg font-black text-white">Cambiar Horario</h3></div>
                     <div class="p-6 space-y-4">
