@@ -7,23 +7,23 @@
 
         <title>{{ config('app.name', 'Top Tennis Digital') }}</title>
 
-        <!-- Fonts -->
+        <!-- Fuentes generales del proyecto -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700,900&display=swap" rel="stylesheet" />
 
-        <!-- ESTO ES LO QUE FALTABA PARA QUE FUNCIONE EL DISEÑO VERDE -->
+        <!-- Tailwind se carga para mantener los estilos del panel -->
         <script src="https://cdn.tailwindcss.com"></script>
 
-        <!-- Scripts de Laravel -->
+        <!-- Archivos propios de Laravel y Vite -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased bg-gray-50">
         <div class="min-h-screen bg-gray-50">
-            
-            <!-- Barra de Navegación -->
+
+            <!-- Barra principal que se comparte en las pantallas internas -->
             @include('layouts.navigation')
 
-            <!-- Cabecera de la página (Opcional) -->
+            <!-- Cabecera que algunas pantallas usan para mostrar titulo -->
             @if (isset($header))
                 <header class="bg-white shadow border-b border-gray-200">
                     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -32,11 +32,11 @@
                 </header>
             @endif
 
-            <!-- Contenido Principal (Aquí entra el Dashboard) -->
+            <!-- Aqui se coloca el contenido de cada pantalla -->
             <main>
                 {{ $slot }}
             </main>
-            
+
         </div>
     </body>
 </html>

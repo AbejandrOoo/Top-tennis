@@ -11,6 +11,8 @@ class Cancha extends Model
 
     protected $table = 'canchas';
 
+    // Estos son los campos que se pueden guardar desde el formulario de canchas
+    // Se dejan definidos para evitar cambios raros en columnas que no se editan
     protected $fillable = [
         'nombre',
         'superficie',

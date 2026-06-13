@@ -16,6 +16,8 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <h2 class="text-xl font-black text-[#0b3b24] mb-6">Editar Cancha</h2>
 
+                {{-- Formulario para actualizar los datos visibles de una cancha --}}
+                {{-- Si se sube una foto nueva el controlador reemplaza la anterior --}}
                 <form method="POST" action="{{ route('admin.canchas.update', $cancha->id) }}" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     

@@ -32,6 +32,8 @@
                 </div>
             @endif
 
+            {{-- Esta parte muestra los tickets del cliente y separa activos de historial --}}
+            {{-- Ayuda a que el usuario vea rapido que reservas puede mover o cancelar --}}
             @if(Auth::user()->rol !== 'admin')
                 @php
                     $todasMisReservas = \App\Models\Reserva::where('user_id', Auth::id())
@@ -146,6 +148,8 @@
                 </div>
             @endif
 
+            {{-- Filtro principal para buscar canchas libres segun fecha hora y duracion --}}
+            {{-- Estos datos tambien se usan para calcular el precio que aparece en cada cancha --}}
             <form method="GET" action="{{ route('dashboard') }}" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
                     <label class="block text-sm font-bold text-[#0b3b24] mb-2">Fecha</label>
@@ -179,6 +183,8 @@
                 </div>
             </form>
 
+            {{-- Listado de canchas que pasaron la revision de disponibilidad --}}
+            {{-- Cada tarjeta ya viene con su total calculado desde el controlador --}}
             @if(isset($canchas) && $canchas->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     @foreach($canchas as $cancha)
@@ -216,6 +222,8 @@
             @endif
         </div>
 
+        {{-- Modal de pago para confirmar la pre reserva de la cancha elegida --}}
+        {{-- Aqui se envia la cancha fecha hora duracion y metodo de pago --}}
         <div x-show="showPaymentModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div @click="showPaymentModal = false" class="fixed inset-0 bg-gray-900 bg-opacity-75"></div>
@@ -257,6 +265,8 @@
             </div>
         </div>
 
+        {{-- Modal para mover una reserva existente a otra fecha y hora --}}
+        {{-- El controlador revisa despues si el nuevo horario sigue libre --}}
         <div x-show="showReprogramarModal" style="display: none;" class="fixed inset-0 z-50 overflow-y-auto">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div @click="showReprogramarModal = false" class="fixed inset-0 bg-gray-900 bg-opacity-75"></div>

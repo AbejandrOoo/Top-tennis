@@ -11,6 +11,8 @@
                     </div>
                 @endif
 
+                {{-- Formulario para registrar una cancha nueva en el sistema --}}
+                {{-- Los datos se usan despues para mostrarla al cliente en reservas --}}
                 <form method="POST" action="{{ route('admin.canchas.store') }}" class="space-y-4">
                     @csrf
 

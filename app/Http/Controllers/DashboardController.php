@@ -14,8 +14,8 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        // La limpieza de reservas expiradas ahora la maneja el Comando Programado (Cron Job) en segundo plano.
-        // Esto hace que el Dashboard cargue mucho más rápido.
+        // Si entra un administrador lo mandamos a su propio panel
+        // Asi no se mezcla la vista de cliente con la vista de control
         if (Auth::user()->rol === 'admin') {
             return redirect()->route('admin.dashboard');
         }
@@ -24,6 +24,8 @@ class DashboardController extends Controller
         $horaInicioInput = $request->input('hora');
         $duracionInput = (int) $request->input('duracion', 1);
 
+        // Cuando el usuario entra sin filtros se propone una hora usable
+        // La idea es evitar que el formulario cargue con un horario pasado
         if (!$horaInicioInput) {
             if ($fecha === Carbon::now()->format('Y-m-d')) {
                 $horaSugerida = Carbon::now()->addHour()->hour;
@@ -33,6 +35,8 @@ class DashboardController extends Controller
             }
         }
 
+        // Antes de mostrar canchas revisamos que la fecha todavia sirva
+        // Si el horario ya paso no tiene sentido buscar disponibilidad
         $fechaReservaCompleta = Carbon::parse($fecha . ' ' . $horaInicioInput);
         if ($fechaReservaCompleta->isPast()) {
             return view('dashboard')->with([
@@ -43,6 +47,8 @@ class DashboardController extends Controller
 
         $carbonInicio = Carbon::createFromFormat('H:i', $horaInicioInput);
         
+        // La reserva no debe pasarse del cierre del club
+        // Por eso se corta el flujo antes de consultar canchas libres
         if ($carbonInicio->hour + $duracionInput > 23) {
             return view('dashboard')->with([
                 'error' => 'El club cierra a las 11:00 PM. No hay disponibilidad para ese rango.',
@@ -53,6 +59,8 @@ class DashboardController extends Controller
         $horaFinCalculada = $carbonInicio->copy()->addHours($duracionInput)->format('H:i:s');
         $horaInicioFormateada = $carbonInicio->format('H:i:s');
 
+        // Buscamos reservas que choquen con el rango pedido por el cliente
+        // Con esto se filtran las canchas que ya estan ocupadas
         $canchasOcupadasIds = Reserva::where('fecha', $fecha)
             ->whereIn('estado', ['Pendiente', 'Verificado'])
             ->where(function($query) use ($horaInicioFormateada, $horaFinCalculada) {
@@ -61,8 +69,8 @@ class DashboardController extends Controller
 
         $canchas = Cancha::whereNotIn('id', $canchasOcupadasIds)->where('estado', 'Disponible')->get();
 
-        // Calculamos el precio segun la tarifa registrada para cada cancha.
-        // Si una tarifa falta, usamos el precio anterior como respaldo.
+        // A cada cancha libre se le agrega su total para mostrarlo en pantalla
+        // El calculo sale de tarifas y mantiene un respaldo si falta algun dato
         $canchas->each(function ($cancha) use ($carbonInicio, $duracionInput) {
             $cancha->total_reserva = $this->calcularTotalReserva($cancha->id, $carbonInicio, $duracionInput);
         });
@@ -72,6 +80,8 @@ class DashboardController extends Controller
 
     public function reservar(Request $request)
     {
+        // Validamos lo minimo antes de crear la reserva
+        // Estos datos vienen del modal de pago del dashboard
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
             'fecha' => 'required|date|after_or_equal:today',
@@ -81,6 +91,8 @@ class DashboardController extends Controller
             'numero_operacion' => 'required_if:metodo_pago,yape'
         ]);
 
+        // Segunda revision de fecha para evitar reservas viejas enviadas a mano
+        // Esto protege aunque alguien cambie datos desde el navegador
         $fechaVerificacion = Carbon::parse($request->fecha . ' ' . $request->hora);
         if ($fechaVerificacion->isPast()) {
             return redirect()->back()->with('error', 'Error: No puedes reservar en un horario que ya pasó.');
@@ -88,10 +100,14 @@ class DashboardController extends Controller
 
         $carbonInicio = Carbon::createFromFormat('H:i', $request->hora);
 
+        // Se vuelve a revisar el cierre del club antes de guardar
+        // Asi el backend mantiene la regla aunque falle el formulario
         if ($carbonInicio->hour + (int)$request->duracion > 23) {
             return redirect()->back()->with('error', 'Horario no permitido: El club cierra a las 11:00 PM.');
         }
 
+        // El cliente no debe acumular demasiadas reservas abiertas
+        // Esta regla mantiene controlado el uso de las canchas
         $reservasActivas = Reserva::where('user_id', Auth::id())->whereIn('estado', ['Pendiente', 'Verificado'])->count();
         if ($reservasActivas >= 3) {
             return redirect()->back()->with('error', 'Límite superado: No puedes tener más de 3 reservas activas simultáneamente.');
@@ -100,9 +116,12 @@ class DashboardController extends Controller
         $horaInicio = $carbonInicio->format('H:i:s');
         $horaFin = $carbonInicio->copy()->addHours((int)$request->duracion)->format('H:i:s');
 
+        // Todo el guardado se hace dentro de una transaccion
+        // Asi la revision de choque y la creacion quedan juntas
         return DB::transaction(function () use ($request, $horaInicio, $horaFin, $carbonInicio) {
             
-            // SOLUCIÓN "CHOQUE FANTASMA" (lockForUpdate)
+            // Esta revision bloquea el horario mientras se confirma la reserva
+            // Sirve para reducir cruces cuando dos usuarios reservan a la vez
             $cruceHorario = Reserva::where('cancha_id', $request->cancha_id)->where('fecha', $request->fecha)
                 ->whereIn('estado', ['Pendiente', 'Verificado'])
                 ->where(function($query) use ($horaInicio, $horaFin) {
@@ -115,7 +134,8 @@ class DashboardController extends Controller
                 return redirect()->back()->with('error', 'Lo sentimos, alguien más acaba de tomar este horario exacto.');
             }
 
-            // El total se toma de la tabla tarifas para que el admin controle los precios.
+            // El total sale de tarifas para que el administrador controle precios
+            // Si falta una tarifa se mantiene un precio de respaldo
             $totalCobrar = $this->calcularTotalReserva($request->cancha_id, $carbonInicio, (int) $request->duracion);
 
             Reserva::create([
@@ -131,6 +151,8 @@ class DashboardController extends Controller
 
     public function cancelar($id)
     {
+        // Primero ubicamos la reserva y revisamos que sea del usuario actual
+        // Luego se aplican las reglas de tiempo y reembolso
         $reserva = Reserva::findOrFail($id);
         if ($reserva->user_id !== Auth::id()) { return redirect()->back()->with('error', 'Acción no autorizada.'); }
         if (in_array($reserva->estado, ['Cancelada', 'Expirado', 'No_Show', 'Rechazado'])) {
@@ -150,6 +172,8 @@ class DashboardController extends Controller
         $montoReembolso = 0.00;
         $mensajeAlerta = "Reserva cancelada con éxito.";
 
+        // Solo las reservas pagadas por Yape manejan monto de reembolso
+        // En efectivo no se devuelve dinero desde esta pantalla
         if ($reserva->metodo_pago === 'yape') {
             if ($horasDiferencia >= 6 || $esReciente) {
                 $montoReembolso = $reserva->total;
@@ -166,6 +190,8 @@ class DashboardController extends Controller
 
     public function reprogramar(Request $request, $id)
     {
+        // Para reprogramar solo necesitamos nueva fecha y nueva hora
+        // Lo demas se conserva desde la reserva original
         $request->validate(['nueva_fecha' => 'required|date|after_or_equal:today', 'nueva_hora' => 'required']);
         $reserva = Reserva::findOrFail($id);
 
@@ -192,6 +218,8 @@ class DashboardController extends Controller
         $nuevaHoraInicio = $carbonInicio->format('H:i:s');
         $nuevaHoraFin = $carbonInicio->copy()->addHours($reserva->duracion)->format('H:i:s');
 
+        // Antes de mover la reserva se revisa que el nuevo horario este libre
+        // Se ignora la misma reserva para no chocar contra ella misma
         $cruceHorario = Reserva::where('cancha_id', $reserva->cancha_id)->where('id', '!=', $reserva->id)
             ->where('fecha', $request->nueva_fecha)->whereIn('estado', ['Pendiente', 'Verificado'])
             ->where(function($query) use ($nuevaHoraInicio, $nuevaHoraFin) {
@@ -200,10 +228,12 @@ class DashboardController extends Controller
 
         if ($cruceHorario) { return redirect()->back()->with('error', 'La cancha no está disponible en ese horario.'); }
 
-        // Recalculamos con tarifas reales para respetar los precios configurados.
+        // Se recalcula el precio porque el nuevo horario puede tener otro turno
+        // Esta parte respeta las tarifas que manejo el administrador
         $nuevoTotal = $this->calcularTotalReserva($reserva->cancha_id, $carbonInicio, $reserva->duracion);
 
-        // SOLUCIÓN "EL ROBO PERFECTO"
+        // No se permite pasar a un horario mas caro desde la misma reserva
+        // Para ese caso el cliente debe cancelar y crear una reserva nueva
         if ($nuevoTotal > $reserva->total) {
             return redirect()->back()->with('error', 'No puedes reprogramar a un horario de mayor precio (Hora Punta). Cancela la reserva actual (pide reembolso) y genera una nueva.');
         }
@@ -218,6 +248,8 @@ class DashboardController extends Controller
 
     public function eliminar($id)
     {
+        // El historial visible solo se puede limpiar si la reserva ya no esta activa
+        // Asi evitamos que el cliente borre una reserva pendiente por error
         $reserva = Reserva::findOrFail($id);
         if ($reserva->user_id !== Auth::id()) { return redirect()->back()->with('error', 'Acción no autorizada.'); }
         if (!in_array($reserva->estado, ['Cancelada', 'Expirado', 'No_Show', 'Rechazado'])) {
@@ -231,7 +263,8 @@ class DashboardController extends Controller
     {
         $total = 0;
 
-        // Sumamos hora por hora porque una reserva de 2 horas puede cruzar turnos.
+        // Sumamos cada hora por separado porque una reserva puede cruzar turnos
+        // De esta forma el total queda mas cercano a la tarifa real
         for ($i = 0; $i < $duracion; $i++) {
             $horaEvaluada = $horaInicio->copy()->addHours($i)->hour;
             $turno = $this->determinarTurno($horaEvaluada);
@@ -248,7 +281,8 @@ class DashboardController extends Controller
 
     private function determinarTurno(int $hora): string
     {
-        // Mismos turnos que se registran en el CRUD de tarifas.
+        // Se usa la misma division simple de turnos que ve el administrador
+        // Esto conecta el horario elegido con el precio guardado
         if ($hora < 12) {
             return 'Mañana';
         }
@@ -262,7 +296,8 @@ class DashboardController extends Controller
 
     private function precioRespaldoPorHora(int $hora): float
     {
-        // Respaldo temporal: mantiene el comportamiento anterior si aun no hay tarifa.
+        // Precio de respaldo para no romper reservas si falta configurar tarifas
+        // Es mejor mostrar un total base que bloquear todo el flujo
         return $hora >= 18 ? 60.00 : 50.00;
     }
 }

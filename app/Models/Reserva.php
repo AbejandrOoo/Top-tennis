@@ -19,7 +19,7 @@ class Reserva extends Model
         'hora_inicio',
         'hora_fin',
         'duracion',
-        'estado', // 'Pendiente', 'Verificado', 'Rechazado', 'Expirado', 'No_Show', 'Cancelada'
+        'estado',
         'metodo_pago',
         'numero_operacion',
         'codigo_acceso',
@@ -31,10 +31,12 @@ class Reserva extends Model
         'reprogramaciones'
     ];
 
-    // Eventos automáticos de Eloquent para el Historial (Auditoría)
+    // Estos eventos guardan un registro simple de lo que pasa con la reserva
+    // Sirven para explicar despues quien cambio el estado y cuando ocurrio
     protected static function booted()
     {
-        // Se ejecuta automáticamente al crear una reserva
+        // Cuando nace una reserva se guarda el primer movimiento del historial
+        // Con eso queda rastro del estado inicial y de la duracion pedida
         static::created(function ($reserva) {
             HistorialReserva::create([
                 'reserva_id' => $reserva->id,
@@ -44,9 +46,11 @@ class Reserva extends Model
             ]);
         });
 
-        // Se ejecuta automáticamente al actualizar cualquier campo (cancelar, reprogramar, verificar)
+        // Cuando se actualiza una reserva se revisan los cambios importantes
+        // No todo cambio necesita historial pero estado y reprogramacion si
         static::updated(function ($reserva) {
-            // Detectamos qué campo cambió para registrar la acción exacta
+            // Si cambia el estado se registra una accion entendible para el usuario
+            // Tambien se guarda si hubo cancelacion o monto de reembolso
             if ($reserva->isDirty('estado')) {
                 $nuevoEstado = $reserva->estado;
                 $accion = strtolower($nuevoEstado) === 'cancelada' ? 'cancelar' : (strtolower($nuevoEstado) === 'expirado' ? 'expirar' : 'editar');
@@ -59,6 +63,8 @@ class Reserva extends Model
                 ]);
             }
 
+            // Si sube el contador de reprogramaciones se deja una nota aparte
+            // Asi queda claro que la fecha u hora fueron movidas
             if ($reserva->isDirty('reprogramaciones')) {
                 HistorialReserva::create([
                     'reserva_id' => $reserva->id,
@@ -72,11 +78,13 @@ class Reserva extends Model
 
     public function user()
     {
+        // Relacion con el cliente que hizo la reserva
         return $this->belongsTo(User::class);
     }
 
     public function cancha()
     {
+        // Relacion con la cancha que se separo para jugar
         return $this->belongsTo(Cancha::class);
     }
 }

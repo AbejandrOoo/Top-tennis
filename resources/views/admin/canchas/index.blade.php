@@ -15,6 +15,8 @@
                 </div>
             @endif
 
+            {{-- Tabla de canchas que administra el club --}}
+            {{-- Desde aqui se puede editar o sacar una cancha de disponibilidad --}}
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <table class="w-full text-left border-collapse">
                     <thead>

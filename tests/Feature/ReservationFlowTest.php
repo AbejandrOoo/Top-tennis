@@ -21,7 +21,8 @@ class ReservationFlowTest extends TestCase
         $this->crearTarifa($cancha->id, 'Mañana', 35);
         $this->crearTarifa($cancha->id, 'Tarde', 45);
 
-        // 11:00 por 2 horas cruza de Mañana a Tarde: 35 + 45 = 80.
+        // Esta prueba revisa que una reserva de dos horas sume dos turnos distintos
+        // Sirve para confirmar que el precio viene de tarifas y no de un numero fijo
         $response = $this->actingAs($user)->get(route('dashboard', [
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora' => '11:00',
@@ -39,6 +40,8 @@ class ReservationFlowTest extends TestCase
 
         $this->crearTarifa($cancha->id, 'Noche', 70);
 
+        // Se manda una reserva normal como si viniera desde el modal del cliente
+        // Luego se revisa que el total guardado sea el precio de la tarifa nocturna
         $response = $this->actingAs($user)->post(route('reservas.store'), [
             'cancha_id' => $cancha->id,
             'fecha' => now()->addDay()->format('Y-m-d'),
@@ -67,6 +70,8 @@ class ReservationFlowTest extends TestCase
         $cancha = $this->crearCancha(['nombre' => 'Cancha Ocupada']);
         $fecha = now()->addDay()->format('Y-m-d');
 
+        // Dejamos una reserva creada para simular una cancha ocupada
+        // Despues buscamos un horario cruzado y no deberia mostrarse libre
         Reserva::create([
             'user_id' => $otherUser->id,
             'cancha_id' => $cancha->id,
@@ -79,7 +84,6 @@ class ReservationFlowTest extends TestCase
             'total' => 100,
         ]);
 
-        // 11:00 se cruza con 10:00-12:00, por eso la cancha no debe listarse.
         $response = $this->actingAs($user)->get(route('dashboard', [
             'fecha' => $fecha,
             'hora' => '11:00',
@@ -96,6 +100,8 @@ class ReservationFlowTest extends TestCase
         $cancha = $this->crearCancha();
         $fecha = now()->addDay()->format('Y-m-d');
 
+        // Creamos tres reservas activas para llegar al limite permitido
+        // Con esto la siguiente solicitud deberia regresar con error
         foreach (['08:00:00', '10:00:00', '12:00:00'] as $horaInicio) {
             Reserva::create([
                 'user_id' => $user->id,
@@ -110,7 +116,8 @@ class ReservationFlowTest extends TestCase
             ]);
         }
 
-        // La cuarta reserva activa debe rechazarse antes de revisar disponibilidad.
+        // La cuarta reserva ya no deberia pasar aunque tenga un horario valido
+        // Esta regla evita que un solo usuario bloquee demasiadas canchas
         $response = $this->actingAs($user)->post(route('reservas.store'), [
             'cancha_id' => $cancha->id,
             'fecha' => $fecha,
@@ -124,6 +131,8 @@ class ReservationFlowTest extends TestCase
 
     private function crearCancha(array $attributes = []): Cancha
     {
+        // Crea una cancha simple para no repetir datos en cada prueba
+        // Se pueden cambiar algunos campos cuando una prueba lo necesita
         return Cancha::create(array_merge([
             'nombre' => 'Cancha Central',
             'superficie' => 'Arcilla',
@@ -136,6 +145,8 @@ class ReservationFlowTest extends TestCase
 
     private function crearTarifa(int $canchaId, string $turno, float $precio): Tarifa
     {
+        // Crea una tarifa rapida para la cancha usada en la prueba
+        // Asi cada caso controla sus propios precios sin depender de seeders
         return Tarifa::create([
             'cancha_id' => $canchaId,
             'turno' => $turno,

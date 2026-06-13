@@ -8,29 +8,32 @@ use Carbon\Carbon;
 
 class LimpiarReservasExpiradas extends Command
 {
-    // El nombre del comando para ejecutarlo en terminal
+    // Nombre corto para ejecutar esta limpieza desde la consola
+    // Tambien se usa cuando Laravel lo programa en segundo plano
     protected $signature = 'reservas:limpiar';
 
-    // Descripción para la consola
-    protected $description = 'Limpia reservas de Yape expiradas (30 mins) y marca No Shows';
+    // Texto simple para reconocer el comando cuando se lista en terminal
+    protected $description = 'Limpia reservas de Yape expiradas y marca No Shows';
 
     public function handle()
     {
         $this->info('Iniciando limpieza de reservas...');
 
-        // 1. Limpiar reservas Pendientes de Yape que pasaron los 30 min
+        // Primero se vencen las reservas de Yape que quedaron esperando pago
+        // Si pasan muchos minutos sin validar se libera ese espacio
         $tiempoLimite = Carbon::now()->subMinutes(30);
         $expiradas = Reserva::where('estado', 'Pendiente')
-            ->where('metodo_pago', 'yape') 
+            ->where('metodo_pago', 'yape')
             ->where('created_at', '<=', $tiempoLimite)
             ->update(['estado' => 'Expirado', 'tipo_cancelacion' => 'sistema']);
 
-        // 2. Marcar "No Show" a los que no llegaron al partido
+        // Luego se revisan partidos verificados que ya terminaron
+        // Si nadie hizo ingreso se marcan como no presentados
         $hoy = Carbon::now()->format('Y-m-d');
         $horaActual = Carbon::now()->format('H:i:s');
-        
+
         $noShows = Reserva::where('estado', 'Verificado')
-            ->where('ingresado', false) // Si tienes este campo para saber si llegaron a la cancha
+            ->where('ingresado', false)
             ->where(function($query) use ($hoy, $horaActual) {
                 $query->where('fecha', '<', $hoy)
                       ->orWhere(function($q) use ($hoy, $horaActual) {

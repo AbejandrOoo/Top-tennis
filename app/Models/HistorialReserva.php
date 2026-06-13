@@ -9,6 +9,8 @@ class HistorialReserva extends Model
 {
     use HasFactory;
 
+    // Estos campos guardan una nota sencilla de cada cambio importante
+    // La idea es poder revisar luego que paso con una reserva
     protected $fillable = [
         'reserva_id',
         'accion',
@@ -16,11 +18,10 @@ class HistorialReserva extends Model
         'descripcion'
     ];
 
-    /**
-     * Relación: Un historial pertenece a una reserva
-     */
     public function reserva()
     {
+        // Cada registro del historial apunta a una reserva concreta
+        // Asi se puede ver la historia completa desde la reserva principal
         return $this->belongsTo(Reserva::class);
     }
 }

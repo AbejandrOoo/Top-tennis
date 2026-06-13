@@ -21,6 +21,8 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    {{-- Formulario para ajustar una tarifa que ya existe --}}
+                    {{-- Mantiene el mismo flujo de validacion que la pantalla de crear --}}
                     <form action="{{ route('tarifas.update', $tarifa) }}" method="POST">
                         @csrf
                         @method('PUT')

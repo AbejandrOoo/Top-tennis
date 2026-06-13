@@ -10,17 +10,23 @@ class AdminCanchaController extends Controller
 {
     public function index()
     {
+        // Lista todas las canchas para que el administrador las revise
+        // Desde esta vista se puede entrar a crear editar o deshabilitar
         $canchas = Cancha::all();
         return view('admin.canchas.index', compact('canchas'));
     }
 
     public function create()
     {
+        // Muestra el formulario vacio para registrar una cancha nueva
+        // La vista se mantiene separada del guardado para ordenar el flujo
         return view('admin.canchas.create');
     }
 
     public function store(Request $request)
     {
+        // Se revisan los datos basicos antes de guardar la cancha
+        // La foto es opcional pero si llega debe ser una imagen valida
         $request->validate([
             'nombre' => 'required|string|max:255',
             'superficie' => 'required|string',
@@ -31,9 +37,12 @@ class AdminCanchaController extends Controller
             'descripcion' => 'nullable|string',
         ]);
 
+        // Se toman los datos del formulario y luego se agrega la foto si existe
+        // Asi el mismo arreglo sirve para crear el registro completo
         $data = $request->all();
 
         if ($request->hasFile('foto')) {
+            // La imagen se guarda en el disco publico para poder mostrarla despues
             $data['foto'] = $request->file('foto')->store('canchas', 'public');
         }
 
@@ -44,6 +53,8 @@ class AdminCanchaController extends Controller
 
     public function edit($id)
     {
+        // Se busca la cancha que se quiere modificar
+        // Si no existe Laravel corta el flujo con una pagina de error normal
         $cancha = Cancha::findOrFail($id);
         return view('admin.canchas.edit', compact('cancha'));
     }
@@ -52,7 +63,8 @@ class AdminCanchaController extends Controller
     {
         $cancha = Cancha::findOrFail($id);
 
-        // Validaciones corregidas y suavizadas para que coincidan con los inputs de edit.blade.php
+        // Estas reglas coinciden con los campos que se editan en la pantalla
+        // Se evita pedir datos que el formulario no esta enviando
         $request->validate([
             'nombre' => 'required|string|max:255',
             'superficie' => 'required|string|max:255',
@@ -62,25 +74,29 @@ class AdminCanchaController extends Controller
             'descripcion' => 'nullable|string',
         ]);
 
+        // Se prepara la informacion nueva antes de actualizar el registro
+        // Si no llega foto se conserva la que ya tenia la cancha
         $data = $request->all();
 
-        // Procesar la foto si se sube una nueva
         if ($request->hasFile('foto')) {
+            // Cuando llega una nueva foto se borra la anterior para no acumular archivos
             if ($cancha->foto) {
                 Storage::disk('public')->delete($cancha->foto);
             }
             $data['foto'] = $request->file('foto')->store('canchas', 'public');
         }
 
-        // Guardar los cambios en la base de datos
+        // Se guardan los cambios ya revisados en la base de datos
         $cancha->update($data);
 
-        // Redireccionar al listado principal con mensaje de éxito
+        // Al terminar se vuelve al listado para confirmar que el cambio quedo
         return redirect()->route('admin.canchas.index')->with('success', 'Cancha actualizada correctamente.');
     }
 
     public function deshabilitar($id)
     {
+        // En vez de borrar una cancha se marca como mantenimiento
+        // Asi no aparece para reservas nuevas pero se conserva su registro
         $cancha = Cancha::findOrFail($id);
         $cancha->update(['estado' => 'En Mantenimiento']);
 

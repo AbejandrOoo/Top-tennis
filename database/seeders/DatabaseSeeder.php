@@ -11,13 +11,10 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // Usuario administrador para acceder al panel /admin/dashboard.
-        // updateOrCreate evita duplicados si ejecutamos el seeder varias veces.
+        // Usuario administrador para entrar al panel de control del sistema
+        // Se usa updateOrCreate para no duplicarlo si el seeder corre otra vez
         User::updateOrCreate(
             ['email' => 'admin@toptennis.test'],
             [
@@ -27,7 +24,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Usuario cliente de prueba para revisar el flujo normal de reservas.
+        // Usuario cliente para probar reservas desde la vista normal
+        // Sirve para revisar el flujo sin crear cuentas a mano cada vez
         User::updateOrCreate(
             ['email' => 'cliente@toptennis.test'],
             [

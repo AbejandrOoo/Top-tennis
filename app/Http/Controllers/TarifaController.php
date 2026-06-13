@@ -9,28 +9,34 @@ use Illuminate\Validation\Rule;
 
 class TarifaController extends Controller
 {
-    // 1. LISTAR TARIFAS (Mostrando el nombre de la cancha)
+    // Muestra las tarifas junto con la cancha para que el administrador las revise
+    // Es la pantalla principal de este mantenimiento
     public function index()
     {
-        // Traemos las tarifas incluyendo la información de la cancha (Relación 1 a N)
+        // Se carga la cancha relacionada para no mostrar solo codigos internos
+        // Asi la tabla queda mas clara al momento de editar precios
         $tarifas = Tarifa::with('cancha')->get();
         return view('tarifas.index', compact('tarifas'));
     }
 
-    // 2. FORMULARIO PARA CREAR
+    // Abre el formulario donde se registra un nuevo precio por turno
+    // Se necesitan las canchas para armar el selector
     public function create()
     {
-        // Traemos todas las canchas para mostrarlas en un "Select" (Cumple rúbrica 3.5)
+        // Se listan todas las canchas disponibles para asignar la tarifa
+        // El administrador decide a cual cancha pertenece el precio
         $canchas = Cancha::all();
         return view('tarifas.create', compact('canchas'));
     }
 
-    // 3. GUARDAR EN LA BASE DE DATOS
+    // Guarda una tarifa nueva despues de revisar los datos del formulario
+    // La combinacion de cancha y turno no debe repetirse
     public function store(Request $request)
     {
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
-            // Una cancha solo debe tener una tarifa por turno para evitar precios duplicados.
+            // Una cancha solo debe tener una tarifa activa por cada turno
+            // Esto evita dudas al calcular el total de una reserva
             'turno' => [
                 'required',
                 'string',
@@ -47,19 +53,22 @@ class TarifaController extends Controller
         return redirect()->route('tarifas.index')->with('success', '¡Tarifa registrada con éxito!');
     }
 
-    // 4. FORMULARIO PARA EDITAR
+    // Abre el formulario con los datos actuales de la tarifa
+    // Desde aqui se puede cambiar cancha turno o precio
     public function edit(Tarifa $tarifa)
     {
         $canchas = Cancha::all();
         return view('tarifas.edit', compact('tarifa', 'canchas'));
     }
 
-    // 5. ACTUALIZAR EN LA BASE DE DATOS
+    // Actualiza una tarifa existente con las mismas reglas que al crear
+    // Se permite guardar la misma tarifa sin tomarla como duplicada
     public function update(Request $request, Tarifa $tarifa)
     {
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
-            // Ignoramos la tarifa actual para permitir guardar sin cambiar el turno.
+            // Se ignora la misma tarifa para poder guardar cambios normales
+            // La validacion solo bloquea duplicados reales de otra fila
             'turno' => [
                 'required',
                 'string',
@@ -78,7 +87,8 @@ class TarifaController extends Controller
         return redirect()->route('tarifas.index')->with('success', '¡Tarifa actualizada!');
     }
 
-    // 6. BORRADO SEGURO
+    // Elimina la tarifa de forma logica para conservar el historial basico
+    // Si luego se necesita otra tarifa del mismo turno se podra crear de nuevo
     public function destroy(Tarifa $tarifa)
     {
         $tarifa->delete();

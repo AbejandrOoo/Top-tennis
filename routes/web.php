@@ -18,7 +18,7 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-// GRUPO DE RESERVAS PROTEGIDAS (USUARIOS CLIENTES)
+// Rutas del cliente que ya entro al sistema y puede manejar sus reservas
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/reservas/store', [DashboardController::class, 'reservar'])->name('reservas.store');
@@ -27,38 +27,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/reservas/{id}/eliminar', [DashboardController::class, 'eliminar'])->name('reservas.eliminar');
 });
 
-// PERFIL DE USUARIO NATIVO (BREEZE)
+// Rutas del perfil que vienen con la base de autenticacion del proyecto
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// RUTAS DEL ADMINISTRADOR (PANEL PRINCIPAL + CRUD CANCHAS Y TARIFAS)
+// Rutas del administrador para revisar caja y mantener datos principales
 Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     
-    // CRUD CANCHAS
+    // Seccion para crear y mantener las canchas que aparecen al cliente
     Route::get('/canchas', [AdminCanchaController::class, 'index'])->name('admin.canchas.index');
     Route::get('/canchas/crear', [AdminCanchaController::class, 'create'])->name('admin.canchas.create');
     Route::post('/canchas/guardar', [AdminCanchaController::class, 'store'])->name('admin.canchas.store');
     Route::get('/canchas/{id}/editar', [AdminCanchaController::class, 'edit'])->name('admin.canchas.edit');
     
-    // SOLUCIÓN: Match acepta tanto POST como PUT para evitar el bloqueo 405 por la caché
+    // Se aceptan dos metodos porque algunos formularios pueden llegar distinto
     Route::match(['post', 'put'], '/canchas/{id}/actualizar', [AdminCanchaController::class, 'update'])->name('admin.canchas.update');
     
     Route::post('/canchas/{id}/deshabilitar', [AdminCanchaController::class, 'deshabilitar'])->name('admin.canchas.deshabilitar');
 
-    // Procesos de caja admin
+    // Acciones de caja para confirmar pagos y controlar el ingreso al local
     Route::post('/reservas/{id}/aprobar', [AdminController::class, 'aprobar'])->name('admin.reservas.aprobar');
     Route::post('/reservas/{id}/rechazar', [AdminController::class, 'rechazar'])->name('admin.reservas.rechazar');
     Route::post('/reservas/{id}/checkin', [AdminController::class, 'checkin'])->name('admin.reservas.checkin');
 
-    // CRUD TARIFAS
-    // Excluimos "show" porque el sistema solo lista, crea, edita y elimina tarifas.
-    // Asi evitamos una ruta a un metodo que no existe en TarifaController.
+    // Tarifas solo necesita listar crear editar y borrar para este sistema
+    // Se deja fuera la vista de detalle porque no se usa en la pantalla actual
     Route::resource('tarifas', TarifaController::class)->except(['show']);
 });
 
-// CARGA DE AUTENTICACIÓN
+// Rutas de login registro y recuperacion de cuenta
 require __DIR__.'/auth.php';

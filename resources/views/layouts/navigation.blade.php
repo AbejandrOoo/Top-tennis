@@ -8,6 +8,8 @@
                     </a>
                 </div>
 
+                {{-- Enlaces principales para escritorio --}}
+                {{-- Las opciones de administracion solo aparecen para usuarios admin --}}
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Panel Principal') }}
@@ -24,6 +26,8 @@
                 </div>
             </div>
 
+            {{-- Menu de usuario con perfil y cierre de sesion --}}
+            {{-- Se mantiene a la derecha para no mezclarlo con los modulos --}}
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -66,6 +70,8 @@
         </div>
     </div>
 
+    {{-- Version movil del menu principal --}}
+    {{-- Repite los mismos enlaces importantes para pantallas pequenas --}}
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">

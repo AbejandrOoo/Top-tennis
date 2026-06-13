@@ -25,7 +25,8 @@
                     </button>
                 </div>
 
-                <!-- PESTAÑA: YAPES PENDIENTES -->
+                {{-- Bloque para revisar pagos que entraron por Yape y siguen pendientes --}}
+                {{-- Desde aqui el administrador aprueba o rechaza sin entrar a otra pantalla --}}
                 <div x-show="tabActiva === 'pendientes'">
                     @if($pendientes->count() > 0)
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -65,6 +66,8 @@
                 </div>
 
                 <!-- PESTAÑA: AGENDA DE HOY -->
+                {{-- Agenda del dia para ver reservas que se deben atender en el local --}}
+                {{-- Tambien permite marcar el ingreso cuando los jugadores llegan --}}
                 <div x-show="tabActiva === 'agenda'" style="display: none;">
                     @if($agendaHoy->count() > 0)
                         <div class="overflow-x-auto bg-white rounded-xl shadow border border-gray-200">

@@ -10,20 +10,20 @@ use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
-    // El constructor quedó limpio sin el middleware antiguo que causaba el error 500
-
     public function index()
     {
         $hoy = Carbon::now()->format('Y-m-d');
 
-        // 1. Panel de Pagos Pendientes (Las transferencias que acaban de llegar)
+        // En esta parte se juntan los pagos que todavia esperan revision
+        // El administrador los ve primero porque son los que necesitan respuesta
         $pendientes = Reserva::with(['user', 'cancha'])
             ->where('estado', 'Pendiente')
             ->where('metodo_pago', 'yape')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // 2. Agenda de Hoy (Partidos programados para el día actual)
+        // Tambien se arma la agenda del dia para ver que partidos vienen
+        // Aqui aparecen reservas pendientes y verificadas para control de caja
         $agendaHoy = Reserva::with(['user', 'cancha'])
             ->where('fecha', $hoy)
             ->whereIn('estado', ['Verificado', 'Pendiente'])
@@ -35,11 +35,13 @@ class AdminController extends Controller
 
     public function aprobar($id)
     {
+        // Cuando el pago se acepta la reserva queda confirmada para el cliente
+        // Tambien se marca el monto como pagado para cuadrar caja
         $reserva = Reserva::findOrFail($id);
         
         $reserva->update([
             'estado' => 'Verificado',
-            'monto_pagado' => $reserva->total // Confirmamos que entró el dinero completo
+            'monto_pagado' => $reserva->total
         ]);
 
         return redirect()->back()->with('success', '¡Pago aprobado! Se generó el ticket del cliente y la cancha está confirmada.');
@@ -47,9 +49,10 @@ class AdminController extends Controller
 
     public function rechazar(Request $request, $id)
     {
+        // Si el pago no corresponde se libera la reserva para otros usuarios
+        // El cambio de estado deja claro que fue una accion del administrador
         $reserva = Reserva::findOrFail($id);
         
-        // Al rechazar, la cancha vuelve a estar libre inmediatamente
         $reserva->update([
             'estado' => 'Rechazado',
             'tipo_cancelacion' => 'admin'
@@ -60,9 +63,10 @@ class AdminController extends Controller
 
     public function checkin($id)
     {
+        // Esta accion confirma que el jugador ya llego al local
+        // Luego la reserva queda como completada para no seguir apareciendo igual
         $reserva = Reserva::findOrFail($id);
         
-        // Marcar que los jugadores ya llegaron al local
         $reserva->update([
             'ingresado' => true,
             'estado' => 'Completado'

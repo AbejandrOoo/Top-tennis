@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -10,7 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// Permitimos asignar "rol" para poder crear usuarios admin desde seeders o formularios controlados.
+// El rol se puede llenar desde seeders para crear usuarios de prueba
+// Esto ayuda a separar rapido la vista de cliente y la de administrador
 #[Fillable(['name', 'email', 'password', 'rol'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -25,6 +25,8 @@ class User extends Authenticatable
      */
     protected function casts(): array
     {
+        // El password se guarda cifrado y la fecha de verificacion queda como fecha real
+        // Laravel usa estos casts cada vez que lee o escribe el usuario
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
