@@ -1,10 +1,16 @@
 <x-app-layout>
-    <div class="py-8 bg-gray-50 min-h-screen">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Editar Cancha') }}
+        </h2>
+    </x-slot>
+
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
             @if ($errors->any())
-                <div class="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-xl shadow-sm">
-                    <strong class="font-bold">Atención:</strong> Revisa los siguientes problemas:
+                <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    <strong>¡Uy! Hubo un problema:</strong>
                     <ul class="mt-2 list-disc list-inside text-sm">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
@@ -12,59 +18,63 @@
                     </ul>
                 </div>
             @endif
-            
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                <h2 class="text-xl font-black text-[#0b3b24] mb-6">Editar Cancha</h2>
 
-                {{-- Formulario para actualizar los datos visibles de una cancha --}}
-                {{-- Si se sube una foto nueva el controlador reemplaza la anterior --}}
-                <form method="POST" action="{{ route('admin.canchas.update', $cancha->id) }}" enctype="multipart/form-data" class="space-y-6">
-                    @csrf
-                    
-                    <div>
-                        <label class="block text-sm font-bold text-[#0b3b24] mb-2">Nombre de la Cancha</label>
-                        <input type="text" name="nombre" value="{{ old('nombre', $cancha->nombre) }}" class="w-full border border-gray-300 rounded-xl py-2 px-4 text-sm font-medium focus:ring-[#0b3b24] focus:border-[#0b3b24]">
-                    </div>
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <form method="POST" action="{{ route('admin.canchas.update', $cancha->id) }}" enctype="multipart/form-data">
+                        @csrf
+                        @method('PUT')
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-bold text-[#0b3b24] mb-2">Superficie</label>
-                            <input type="text" name="superficie" value="{{ old('superficie', $cancha->superficie) }}" class="w-full border border-gray-300 rounded-xl py-2 px-4 text-sm font-medium focus:ring-[#0b3b24] focus:border-[#0b3b24]">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Nombre Completo de la Cancha:</label>
+                            <input type="text" name="nombre" value="{{ old('nombre', $cancha->nombre) }}" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-[#0b3b24] mb-2">Iluminación</label>
-                            <select name="iluminacion" class="w-full border border-gray-300 rounded-xl py-2 px-4 text-sm font-medium focus:ring-[#0b3b24] focus:border-[#0b3b24]">
-                                <option value="Con iluminación" {{ old('iluminacion', $cancha->iluminacion) == 'Con iluminación' ? 'selected' : '' }}>Con iluminación</option>
-                                <option value="Sin iluminación" {{ old('iluminacion', $cancha->iluminacion) == 'Sin iluminación' ? 'selected' : '' }}>Sin iluminación</option>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Tipo de Superficie:</label>
+                            <select name="superficie" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Arcilla" {{ old('superficie', $cancha->superficie) == 'Arcilla' ? 'selected' : '' }}>Arcilla / Polvo de Ladrillo</option>
+                                <option value="Césped" {{ old('superficie', $cancha->superficie) == 'Césped' ? 'selected' : '' }}>Césped Natural</option>
+                                <option value="Sintética" {{ old('superficie', $cancha->superficie) == 'Sintética' ? 'selected' : '' }}>Césped Sintético</option>
+                                <option value="Rápida" {{ old('superficie', $cancha->superficie) == 'Rápida' ? 'selected' : '' }}>Cancha Rápida (Cemento)</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-[#0b3b24] mb-2">Modalidad Permitida</label>
-                        <select name="tipo_partido" class="w-full border border-gray-300 rounded-xl py-2 px-4 text-sm font-medium focus:ring-[#0b3b24] focus:border-[#0b3b24]">
-                            <option value="Ambos (Singles y Dobles)" {{ old('tipo_partido', $cancha->tipo_partido) == 'Ambos (Singles y Dobles)' ? 'selected' : '' }}>Ambos (Singles y Dobles)</option>
-                            <option value="Solo Singles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Solo Singles' ? 'selected' : '' }}>Solo Singles</option>
-                            <option value="Solo Dobles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Solo Dobles' ? 'selected' : '' }}>Solo Dobles</option>
-                        </select>
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Modalidad de Juego Permitida:</label>
+                            <select name="tipo_partido" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Ambos (Singles y Dobles)" {{ old('tipo_partido', $cancha->tipo_partido) == 'Ambos (Singles y Dobles)' ? 'selected' : '' }}>Ambos (Singles y Dobles)</option>
+                                <option value="Solo Singles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Solo Singles' ? 'selected' : '' }}>Solo Singles (Individuales)</option>
+                                <option value="Solo Dobles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Solo Dobles' ? 'selected' : '' }}>Solo Dobles (Parejas)</option>
+                                <option value="Singles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Singles' ? 'selected' : '' }}>Singles (Individuales)</option>
+                                <option value="Dobles" {{ old('tipo_partido', $cancha->tipo_partido) == 'Dobles' ? 'selected' : '' }}>Dobles (Parejas)</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-[#0b3b24] mb-2">Foto de la Cancha (Opcional)</label>
-                        <input type="file" name="foto" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">¿Cuenta con Reflectores de Luz?</label>
+                            <select name="iluminacion" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Con iluminación" {{ old('iluminacion', $cancha->iluminacion) == 'Con iluminación' ? 'selected' : '' }}>Con iluminación (apta para nocturnos)</option>
+                                <option value="Sin iluminación" {{ old('iluminacion', $cancha->iluminacion) == 'Sin iluminación' ? 'selected' : '' }}>Sin iluminación (solo diurnos)</option>
+                            </select>
+                        </div>
 
-                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <a href="{{ route('admin.canchas.index') }}" class="bg-white text-gray-700 border border-gray-300 font-bold py-2.5 px-6 rounded-xl text-sm hover:bg-gray-50 transition">
-                            Cancelar
-                        </a>
-                        <button type="submit" class="bg-[#0b3b24] hover:bg-[#072718] text-white font-bold py-2.5 px-6 rounded-xl text-sm shadow-md transition">
-                            Guardar Cambios
-                        </button>
-                    </div>
-                </form>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Foto de la Cancha (Opcional):</label>
+                            <input type="file" name="foto" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <button type="submit" style="background-color: #2563eb !important; color: #ffffff !important; font-weight: bold !important; padding: 10px 20px !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; font-size: 14px !important;">
+                                Actualizar Cancha
+                            </button>
+                            <a href="{{ route('admin.canchas.index') }}" style="color: #4b5563 !important; font-weight: bold !important; text-decoration: none !important;">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
-
         </div>
     </div>
 </x-app-layout>

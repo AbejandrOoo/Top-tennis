@@ -4,7 +4,7 @@
             <div class="flex">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}" class="text-xl font-black text-[#0b3b24] tracking-wider">
-                        🎾 TENNIS-CLUB
+                        TENNIS-CLUB
                     </a>
                 </div>
 
@@ -17,7 +17,7 @@
 
                     @if(Auth::check() && Auth::user()->rol === 'admin')
                         <x-nav-link :href="route('admin.canchas.index')" :active="request()->routeIs('admin.canchas.*')">
-                            ⚙ Mantenimiento Canchas (CRUD 1)
+                            {{ __('Mantenimiento Canchas') }}
                         </x-nav-link>
                         <x-nav-link :href="route('tarifas.index')" :active="request()->routeIs('tarifas.*')">
                             Tarifas
@@ -80,7 +80,7 @@
             
             @if(Auth::check() && Auth::user()->rol === 'admin')
                 <x-responsive-nav-link :href="route('admin.canchas.index')" :active="request()->routeIs('admin.canchas.*')">
-                    ⚙ Mantenimiento Canchas
+                    Mantenimiento Canchas
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tarifas.index')" :active="request()->routeIs('tarifas.*')">
                     Tarifas

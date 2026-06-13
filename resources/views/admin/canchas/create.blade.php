@@ -1,63 +1,84 @@
 <x-app-layout>
-    <div class="py-8 bg-gray-50 min-h-screen">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-                
-                <h3 class="text-xl font-black text-gray-800 mb-6">➕ Registrar Nueva Cancha</h3>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ __('Registrar Nueva Cancha') }}
+        </h2>
+    </x-slot>
 
-                @if ($errors->any())
-                    <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 font-bold text-sm rounded">
-                        Por favor corrige los errores del formulario.
-                    </div>
-                @endif
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            
+            @if ($errors->any())
+                <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    <strong>¡Uy! Hubo un problema:</strong>
+                    <ul class="mt-2 list-disc list-inside text-sm">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                {{-- Formulario para registrar una cancha nueva en el sistema --}}
-                {{-- Los datos se usan despues para mostrarla al cliente en reservas --}}
-                <form method="POST" action="{{ route('admin.canchas.store') }}" class="space-y-4">
-                    @csrf
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <form method="POST" action="{{ route('admin.canchas.store') }}" enctype="multipart/form-data">
+                        @csrf
 
-                    <div>
-                        <label class="block text-sm font-black text-gray-700 mb-1">Nombre Completo de la Cancha</label>
-                        <input type="text" name="nombre" value="{{ old('nombre') }}" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-[#0b3b24] focus:ring focus:ring-green-200 focus:ring-opacity-50 font-medium" placeholder="Ej: Cancha Central N°1" required>
-                        @error('nombre') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Nombre Completo de la Cancha:</label>
+                            <input type="text" name="nombre" value="{{ old('nombre') }}" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Ej: Cancha Central N°1" required>
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-black text-gray-700 mb-1">Tipo de Superficie</label>
-                        <select name="superficie" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-[#0b3b24] focus:ring font-medium" required>
-                            <option value="Arcilla" {{ old('superficie') == 'Arcilla' ? 'selected' : '' }}>Arcilla / Polvo de Ladrillo</option>
-                            <option value="Césped" {{ old('superficie') == 'Césped' ? 'selected' : '' }}>Césped Natural</option>
-                            <option value="Sintética" {{ old('superficie') == 'Sintética' ? 'selected' : '' }}>Césped Sintético</option>
-                            <option value="Rápida" {{ old('superficie') == 'Rápida' ? 'selected' : '' }}>Cancha Rápida (Cemento)</option>
-                        </select>
-                        @error('superficie') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Tipo de Superficie:</label>
+                            <select name="superficie" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Arcilla" {{ old('superficie') == 'Arcilla' ? 'selected' : '' }}>Arcilla / Polvo de Ladrillo</option>
+                                <option value="Césped" {{ old('superficie') == 'Césped' ? 'selected' : '' }}>Césped Natural</option>
+                                <option value="Sintética" {{ old('superficie') == 'Sintética' ? 'selected' : '' }}>Césped Sintético</option>
+                                <option value="Rápida" {{ old('superficie') == 'Rápida' ? 'selected' : '' }}>Cancha Rápida (Cemento)</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-black text-gray-700 mb-1">Modalidad de Juego Permitida</label>
-                        <select name="tipo_partido" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-[#0b3b24] focus:ring font-medium" required>
-                            <option value="Ambos (Singles y Dobles)" {{ old('tipo_partido') == 'Ambos (Singles y Dobles)' ? 'selected' : '' }}>Ambos (Singles y Dobles)</option>
-                            <option value="Singles" {{ old('tipo_partido') == 'Singles' ? 'selected' : '' }}>Solo Singles (Individuales)</option>
-                            <option value="Dobles" {{ old('tipo_partido') == 'Dobles' ? 'selected' : '' }}>Solo Dobles (Parejas)</option>
-                        </select>
-                        @error('tipo_partido') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Estado:</label>
+                            <select name="estado" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Disponible" {{ old('estado') == 'Disponible' ? 'selected' : '' }}>Disponible</option>
+                                <option value="Mantenimiento" {{ old('estado') == 'Mantenimiento' ? 'selected' : '' }}>En Mantenimiento</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-black text-gray-700 mb-1">¿Cuenta con Reflectores de Luz?</label>
-                        <select name="tiene_luz" class="w-full rounded-xl border-gray-300 shadow-sm focus:border-[#0b3b24] focus:ring font-medium" required>
-                            <option value="1" {{ old('tiene_luz') == '1' ? 'selected' : '' }}>Sí, apta para partidos nocturnos</option>
-                            <option value="0" {{ old('tiene_luz') == '0' ? 'selected' : '' }}>No, solo partidos diurnos</option>
-                        </select>
-                        @error('tiene_luz') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
-                    </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Modalidad de Juego Permitida:</label>
+                            <select name="tipo_partido" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Ambos (Singles y Dobles)" {{ old('tipo_partido') == 'Ambos (Singles y Dobles)' ? 'selected' : '' }}>Ambos (Singles y Dobles)</option>
+                                <option value="Singles" {{ old('tipo_partido') == 'Singles' ? 'selected' : '' }}>Solo Singles (Individuales)</option>
+                                <option value="Dobles" {{ old('tipo_partido') == 'Dobles' ? 'selected' : '' }}>Solo Dobles (Parejas)</option>
+                            </select>
+                        </div>
 
-                    <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
-                        <a href="{{ route('admin.canchas.index') }}" class="bg-gray-100 text-gray-600 font-bold py-2 px-4 rounded-xl text-sm hover:bg-gray-200 transition">Cancelar</a>
-                        <button type="submit" class="bg-[#0b3b24] text-white font-bold py-2 px-5 rounded-xl text-sm hover:bg-black transition">Guardar Cancha</button>
-                    </div>
-                </form>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">¿Cuenta con Reflectores de Luz?</label>
+                            <select name="iluminacion" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="Con iluminación" {{ old('iluminacion') == 'Con iluminación' ? 'selected' : '' }}>Con iluminación (apta para nocturnos)</option>
+                                <option value="Sin iluminación" {{ old('iluminacion') == 'Sin iluminación' ? 'selected' : '' }}>Sin iluminación (solo diurnos)</option>
+                            </select>
+                        </div>
 
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Foto de la Cancha (Opcional):</label>
+                            <input type="file" name="foto" class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <button type="submit" style="background-color: #2563eb !important; color: #ffffff !important; font-weight: bold !important; padding: 10px 20px !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; font-size: 14px !important;">
+                                Guardar Cancha
+                            </button>
+                            <a href="{{ route('admin.canchas.index') }}" style="color: #4b5563 !important; font-weight: bold !important; text-decoration: none !important;">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
