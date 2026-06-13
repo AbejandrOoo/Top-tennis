@@ -102,4 +102,25 @@ class AdminCanchaController extends Controller
 
         return redirect()->route('admin.canchas.index')->with('success', 'La cancha ha sido deshabilitada correctamente.');
     }
+
+    public function destroy($id)
+    {
+        $cancha = Cancha::findOrFail($id);
+
+        // Se verifica si hay reservas asociadas a esta cancha
+        $tieneReservas = \App\Models\Reserva::where('cancha_id', $cancha->id)->exists();
+
+        if ($tieneReservas) {
+            return redirect()->route('admin.canchas.index')->with('error', 'No se puede eliminar la cancha porque tiene reservas asociadas.');
+        }
+
+        // Si hay una foto, la eliminamos también
+        if ($cancha->foto) {
+            Storage::disk('public')->delete($cancha->foto);
+        }
+
+        $cancha->delete();
+
+        return redirect()->route('admin.canchas.index')->with('success', 'La cancha ha sido eliminada correctamente.');
+    }
 }

@@ -65,6 +65,9 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     // Sirve un monton por si la cancha esta en arreglo o le estan haciendo limpieza o pintura nueva
     Route::post('/canchas/{id}/deshabilitar', [AdminCanchaController::class, 'deshabilitar'])->name('admin.canchas.deshabilitar');
 
+    // Para eliminar la cancha, si es que no tiene reservas
+    Route::delete('/canchas/{id}', [AdminCanchaController::class, 'destroy'])->name('admin.canchas.destroy');
+
     // Acciones de caja para confirmar pagos y controlar el ingreso al local
     // Cuando el administrador revisa y da el visto bueno a una reserva pendiente de alguien
     Route::post('/reservas/{id}/aprobar', [AdminController::class, 'aprobar'])->name('admin.reservas.aprobar');

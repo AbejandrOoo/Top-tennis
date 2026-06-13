@@ -1,66 +1,56 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h2 class="font-black text-2xl text-[#0b3b24] leading-tight">
                 {{ __('Gestión de Tarifas') }}
             </h2>
-            <a href="{{ route('tarifas.create') }}" style="background-color: #2563eb !important; color: #ffffff !important; font-weight: bold !important; padding: 8px 16px !important; border-radius: 8px !important; text-decoration: none !important; display: inline-block !important; font-size: 14px !important;">
+            <a href="{{ route('tarifas.create') }}" class="bg-[#7cb518] hover:bg-[#689f15] text-white font-bold py-2.5 px-6 rounded-xl text-sm shadow-sm transition">
                 + Nueva Tarifa
             </a>
         </div>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-8 bg-gray-50 min-h-screen relative">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            {{-- Aca revisamos si acabamos de hacer algun cambio importante de manera correcta --}}
-            {{-- para pintar un cartel verde y que la persona sepa que todo salio super bien --}}
             @if(session('success'))
-                <div class="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-sm">
+                <div class="mb-6 p-4 bg-green-100 border-l-4 border-green-600 text-green-800 font-bold rounded-r-xl shadow-sm">
                     {{ session('success') }}
                 </div>
             @endif
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-sm rounded-2xl border border-gray-200">
                 <div class="p-6 text-gray-900">
-                    {{-- Todo este pedazo de codigo sirve para armar el cuadro principal donde mostramos --}}
-                    {{-- la lista completita de precios que tenemos guardados por cada turno y por cada cancha --}}
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
-                            {{-- Esta es la cabecera del cuadro donde le ponemos nombre a cada columna --}}
-                            {{-- para que la persona entienda que informacion esta viendo en la fila de abajo --}}
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cancha</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Turno</th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Precio / Hora</th>
-                                    <th class="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                    <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Cancha</th>
+                                    <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Turno</th>
+                                    <th class="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Precio / Hora</th>
+                                    <th class="px-6 py-4 text-center text-xs font-black text-gray-500 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                {{-- Aca el sistema da un monton de vueltas por cada uno de los precios guardados --}}
-                                {{-- y va pintando una linea nueva con sus datos para llenar toda la tabla --}}
+                            <tbody class="bg-white divide-y divide-gray-100">
                                 @forelse($tarifas as $tarifa)
                                     <tr class="hover:bg-gray-50 transition duration-150">
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-[#0b3b24]">
                                             {{ $tarifa->cancha->nombre }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-600">
                                             {{ $tarifa->turno }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-black text-[#7cb518]">
                                             S/. {{ number_format($tarifa->precio_hora, 2) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                            {{-- Y finalmente aca ponemos los botones magicos para arreglar algun --}}
-                                            {{-- precio que quedo mal o de plano para borrarlo si ya no nos sirve mas --}}
-                                            <div style="display: flex !important; justify-content: center !important; align-items: center !important;">
-                                                <a href="{{ route('tarifas.edit', $tarifa) }}" style="color: #4f46e5 !important; font-weight: bold !important; margin-right: 25px !important; text-decoration: none !important;">
+                                            <div class="flex justify-center items-center gap-4">
+                                                <a href="{{ route('tarifas.edit', $tarifa) }}" class="text-[#0b3b24] hover:text-[#072718] font-bold transition">
                                                     Editar
                                                 </a>
-                                                <form action="{{ route('tarifas.destroy', $tarifa) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar esta tarifa?')" style="display: inline !important;">
+                                                <form action="{{ route('tarifas.destroy', $tarifa) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas eliminar esta tarifa?')" class="inline">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" style="color: #dc2626 !important; font-weight: bold !important; background: none !important; border: none !important; padding: 0 !important; cursor: pointer !important;">
+                                                    <button type="submit" class="text-red-600 hover:text-red-800 font-bold transition">
                                                         Eliminar
                                                     </button>
                                                 </form>
@@ -68,10 +58,8 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    {{-- Este mensaje salvavidas aparece solito cuando el sistema no encuentra --}}
-                                    {{-- absolutamente nada para mostrar y asi la tabla no queda completamente en blanco --}}
                                     <tr>
-                                        <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
+                                        <td colspan="4" class="px-6 py-10 text-center text-sm font-bold text-gray-500">
                                             No hay tarifas registradas todavía.
                                         </td>
                                     </tr>
