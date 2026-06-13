@@ -20,7 +20,8 @@ class DashboardController extends Controller
             return redirect()->route('admin.dashboard');
         }
         
-        $fecha = $request->input('fecha', Carbon::now()->format('Y-m-d'));
+        $fechaInput = $request->input('fecha');
+        $fecha = $fechaInput ?: Carbon::now()->format('Y-m-d');
         $horaInicioInput = $request->input('hora');
         $duracionInput = (int) $request->input('duracion', 1);
 
@@ -28,9 +29,21 @@ class DashboardController extends Controller
         // La idea es evitar que el formulario cargue con un horario pasado
         if (!$horaInicioInput) {
             if ($fecha === Carbon::now()->format('Y-m-d')) {
-                $horaSugerida = Carbon::now()->addHour()->hour;
-                $horaInicioInput = ($horaSugerida >= 6 && $horaSugerida <= 22) ? sprintf('%02d:00', $horaSugerida) : '06:00';
+                $horaSugerida = Carbon::now()->copy()->addHour()->hour;
+                if ($horaSugerida >= 6 && $horaSugerida <= 22 && Carbon::now()->hour < 22) {
+                    $horaInicioInput = sprintf('%02d:00', $horaSugerida);
+                } else {
+                    // Si ya es muy tarde o la hora sugerida no entra en el rango, pasamos a mañana si no forzó la fecha
+                    if (!$fechaInput) {
+                        $fecha = Carbon::now()->addDay()->format('Y-m-d');
+                        $horaInicioInput = '06:00';
+                    } else {
+                        // Forzó la fecha de hoy pero ya es tarde. Se manda a 22:00 para que la validación de cierre de club o pasada lo ataje con un mensaje claro.
+                        $horaInicioInput = '22:00';
+                    }
+                }
             } else {
+                // Si la fecha solicitada es anterior a hoy, la validación isPast lo atrapará
                 $horaInicioInput = '06:00';
             }
         }
@@ -39,8 +52,12 @@ class DashboardController extends Controller
         // Si el horario ya paso no tiene sentido buscar disponibilidad
         $fechaReservaCompleta = Carbon::parse($fecha . ' ' . $horaInicioInput);
         if ($fechaReservaCompleta->isPast()) {
+            $mensajeError = $request->has('hora') 
+                ? 'El horario seleccionado (' . $horaInicioInput . ') ya pasó. Por favor, elige una hora futura.' 
+                : 'Ya no hay horarios disponibles para la fecha seleccionada. Por favor, elige otra fecha.';
+                
             return view('dashboard')->with([
-                'error' => 'El horario seleccionado ya pasó. Por favor, elige una hora futura.',
+                'error' => $mensajeError,
                 'canchas' => collect(), 'fecha' => $fecha, 'horaInicioInput' => $horaInicioInput, 'duracionInput' => $duracionInput, 'totalPreview' => 0
             ]);
         }
@@ -145,7 +162,11 @@ class DashboardController extends Controller
                 'total' => $totalCobrar, 'monto_pagado' => $request->metodo_pago === 'yape' ? $totalCobrar : 0.00
             ]);
 
-            return redirect()->route('dashboard')->with('success', $request->metodo_pago === 'yape' ? '¡Pre-reserva exitosa! Tienes 30 minutos para validarla.' : '¡Reserva en caja registrada!');
+            return redirect()->route('dashboard', [
+                'fecha' => $request->fecha, 
+                'hora' => $request->hora,
+                'duracion' => $request->duracion
+            ])->with('success', $request->metodo_pago === 'yape' ? '¡Pre-reserva exitosa! Tienes 30 minutos para validarla.' : '¡Reserva en caja registrada!');
         });
     }
 
