@@ -6,6 +6,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminCanchaController; 
 use App\Http\Controllers\TarifaController;
+use App\Http\Controllers\AdminMantenimientoController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -84,6 +85,9 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     // Se deja fuera la vista de detalle porque no se usa en la pantalla actual
     Route::resource('tarifas', TarifaController::class)->except(['show']);
     
+    // CRUD para gestionar los mantenimientos de las canchas
+    Route::resource('mantenimientos', AdminMantenimientoController::class)->except(['show']);
+
     // Configuración para subir el QR de Yape
     Route::post('/config/yape', [AdminController::class, 'updateYapeQr'])->name('admin.config.yape');
 });

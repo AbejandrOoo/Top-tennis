@@ -10,9 +10,15 @@ class Tarifa extends Model
 {
     use HasFactory, SoftDeletes;
 
-    // La tarifa guarda el precio por cancha y por turno
-    // Con estos datos luego se calcula el total de una reserva
-    protected $fillable = ['cancha_id', 'turno', 'precio_hora'];
+    // Actualizamos el fillable con las nuevas columnas de horas y estado
+    protected $fillable = [
+        'cancha_id', 
+        'turno',       // Lo mantenemos por si otra parte de tu sistema aún lo lee
+        'precio_hora',
+        'hora_inicio', // Agregado para el cálculo exacto
+        'hora_fin',    // Agregado para el cálculo exacto
+        'estado'       // Agregado para el historial de activación/desactivación
+    ];
 
     public function cancha()
     {

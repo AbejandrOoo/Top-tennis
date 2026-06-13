@@ -2,96 +2,103 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\Tarifa;
 use App\Models\Cancha;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class TarifaController extends Controller
 {
-    // Muestra las tarifas junto con la cancha para que el administrador las revise
-    // Es la pantalla principal de este mantenimiento
     public function index()
     {
-        // Se carga la cancha relacionada para no mostrar solo codigos internos
-        // Asi la tabla queda mas clara al momento de editar precios
-        $tarifas = Tarifa::with('cancha')->get();
-        return view('tarifas.index', compact('tarifas'));
-    }
-
-    // Abre el formulario donde se registra un nuevo precio por turno
-    // Se necesitan las canchas para armar el selector
-    public function create()
-    {
-        // Se listan todas las canchas disponibles para asignar la tarifa
-        // El administrador decide a cual cancha pertenece el precio
+        // Cargamos todas las tarifas ordenadas por cancha y luego por hora para que sea fácil de leer en tu panel
+        $tarifas = Tarifa::with('cancha')->orderBy('cancha_id')->orderBy('hora_inicio')->get();
         $canchas = Cancha::all();
-        return view('tarifas.create', compact('canchas'));
+        
+        return view('admin.tarifas.index', compact('tarifas', 'canchas'));
     }
 
-    // Guarda una tarifa nueva despues de revisar los datos del formulario
-    // La combinacion de cancha y turno no debe repetirse
     public function store(Request $request)
     {
+        // 1. Validamos los datos básicos y que la hora de inicio sea MENOR que la hora de fin (after:hora_inicio)
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
-            // Una cancha solo debe tener una tarifa activa por cada turno
-            // Esto evita dudas al calcular el total de una reserva
-            'turno' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('tarifas')->where(fn ($query) => $query
-                    ->where('cancha_id', $request->cancha_id)
-                    ->whereNull('deleted_at')),
-            ],
             'precio_hora' => 'required|numeric|min:0',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
         ]);
 
-        Tarifa::create($request->all());
+        // 2. Validación de solapamiento (Que no choque con otra tarifa activa de la misma cancha)
+        $solapamiento = Tarifa::where('cancha_id', $request->cancha_id)
+            ->where('estado', 'Activa')
+            ->where(function ($query) use ($request) {
+                $query->where('hora_inicio', '<', $request->hora_fin)
+                      ->where('hora_fin', '>', $request->hora_inicio);
+            })
+            ->exists();
 
-        return redirect()->route('tarifas.index')->with('success', '¡Tarifa registrada con éxito!');
+        if ($solapamiento) {
+            return redirect()->back()->with('error', 'Error: El horario choca con otra tarifa activa para esta cancha.');
+        }
+
+        // 3. Si todo está bien, creamos la tarifa
+        Tarifa::create([
+            'cancha_id' => $request->cancha_id,
+            'precio_hora' => $request->precio_hora,
+            'hora_inicio' => $request->hora_inicio,
+            'hora_fin' => $request->hora_fin,
+            'estado' => 'Activa' // Por defecto nace activa
+        ]);
+
+        return redirect()->back()->with('success', 'Tarifa registrada exitosamente.');
     }
 
-    // Abre el formulario con los datos actuales de la tarifa
-    // Desde aqui se puede cambiar cancha turno o precio
-    public function edit(Tarifa $tarifa)
+    public function update(Request $request, $id)
     {
-        $canchas = Cancha::all();
-        return view('tarifas.edit', compact('tarifa', 'canchas'));
-    }
-
-    // Actualiza una tarifa existente con las mismas reglas que al crear
-    // Se permite guardar la misma tarifa sin tomarla como duplicada
-    public function update(Request $request, Tarifa $tarifa)
-    {
+        // 1. Validamos los datos de entrada
         $request->validate([
-            'cancha_id' => 'required|exists:canchas,id',
-            // Se ignora la misma tarifa para poder guardar cambios normales
-            // La validacion solo bloquea duplicados reales de otra fila
-            'turno' => [
-                'required',
-                'string',
-                'max:50',
-                Rule::unique('tarifas')
-                    ->where(fn ($query) => $query
-                        ->where('cancha_id', $request->cancha_id)
-                        ->whereNull('deleted_at'))
-                    ->ignore($tarifa->id),
-            ],
             'precio_hora' => 'required|numeric|min:0',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin' => 'required|date_format:H:i|after:hora_inicio',
+            'estado' => 'required|in:Activa,Inactiva'
         ]);
 
-        $tarifa->update($request->all());
+        $tarifa = Tarifa::findOrFail($id);
 
-        return redirect()->route('tarifas.index')->with('success', '¡Tarifa actualizada!');
+        // 2. Si la tarifa se va a mantener o cambiar a 'Activa', revisamos que el nuevo horario no choque con otras
+        if ($request->estado === 'Activa') {
+            $solapamiento = Tarifa::where('cancha_id', $tarifa->cancha_id)
+                ->where('id', '!=', $id) // Excluimos la tarifa actual de la búsqueda
+                ->where('estado', 'Activa')
+                ->where(function ($query) use ($request) {
+                    $query->where('hora_inicio', '<', $request->hora_fin)
+                          ->where('hora_fin', '>', $request->hora_inicio);
+                })
+                ->exists();
+
+            if ($solapamiento) {
+                return redirect()->back()->with('error', 'Error: El nuevo horario choca con otra tarifa activa.');
+            }
+        }
+
+        // 3. Actualizamos los datos
+        $tarifa->update([
+            'precio_hora' => $request->precio_hora,
+            'hora_inicio' => $request->hora_inicio,
+            'hora_fin' => $request->hora_fin,
+            'estado' => $request->estado
+        ]);
+
+        return redirect()->back()->with('success', 'Tarifa actualizada correctamente.');
     }
 
-    // Elimina la tarifa de forma logica para conservar el historial basico
-    // Si luego se necesita otra tarifa del mismo turno se podra crear de nuevo
-    public function destroy(Tarifa $tarifa)
+    public function destroy($id)
     {
-        $tarifa->delete();
-        return redirect()->route('tarifas.index')->with('success', '¡Tarifa eliminada del sistema!');
+        $tarifa = Tarifa::findOrFail($id);
+        
+        // REQUERIMIENTO: Las tarifas no deben eliminarse sino manejarse con estado.
+        // Hacemos una "eliminación lógica" pasándola a Inactiva para no romper reservas pasadas.
+        $tarifa->update(['estado' => 'Inactiva']);
+
+        return redirect()->back()->with('success', 'Tarifa desactivada. (El historial se mantiene intacto).');
     }
 }

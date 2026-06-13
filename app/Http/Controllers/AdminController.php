@@ -3,147 +3,138 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Reserva;
+use App\Models\Mantenimiento;
 use App\Models\Cancha;
+use App\Models\Reserva;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 
-class AdminController extends Controller
+class AdminMantenimientoController extends Controller
 {
     public function index()
     {
-        $hoy = Carbon::now()->format('Y-m-d');
-
-        // En esta parte se juntan los pagos que todavia esperan revision
-        // El administrador los ve primero porque son los que necesitan respuesta
-        $pendientes = Reserva::with(['user', 'cancha'])
-            ->where('estado', 'Pendiente')
-            ->orderBy('created_at', 'asc')
-            ->get();
-
-        // Tambien se arma la agenda del dia para ver que partidos vienen
-        // Aqui aparecen reservas pendientes y verificadas para control de caja
-        $agendaHoy = Reserva::with(['user', 'cancha'])
-            ->where('fecha', $hoy)
-            ->whereIn('estado', ['Verificado', 'Pendiente'])
-            ->orderBy('hora_inicio', 'asc')
-            ->get();
-
-        return view('admin.dashboard', compact('pendientes', 'agendaHoy'));
-    }
-
-    public function aprobar($id)
-    {
-        // Cuando el pago se acepta la reserva queda confirmada para el cliente
-        // Tambien se marca el monto como pagado para cuadrar caja
-        $reserva = Reserva::findOrFail($id);
+        $mantenimientos = Mantenimiento::with('cancha')->orderBy('fecha_inicio', 'desc')->get();
+        $canchas = Cancha::all();
         
-        // Se genera un código de acceso único para el ticket del cliente
-        do {
-            $codigo_acceso = 'TT' . Str::upper(Str::random(12));
-        } while (Reserva::where('codigo_acceso', $codigo_acceso)->exists());
-
-        $reserva->update([
-            'estado' => 'Verificado',
-            'monto_pagado' => $reserva->total,
-            'codigo_acceso' => $codigo_acceso,
-        ]);
-
-        return redirect()->back()->with('success', '¡Pago aprobado! Se generó el ticket del cliente y la cancha está confirmada.');
+        return view('admin.mantenimientos.index', compact('mantenimientos', 'canchas'));
     }
 
-    public function rechazar(Request $request, $id)
+    public function store(Request $request)
     {
-        // Si el pago no corresponde se libera la reserva para otros usuarios
-        // El cambio de estado deja claro que fue una accion del administrador
-        $reserva = Reserva::findOrFail($id);
-        
-        $reserva->update([
-            'estado' => 'Rechazado',
-            'tipo_cancelacion' => 'admin'
-        ]);
-
-        return redirect()->back()->with('error', 'Reserva rechazada. La cancha ha sido liberada para otros usuarios.');
-    }
-
-    public function checkin($id)
-    {
-        // Esta accion confirma que el jugador ya llego al local
-        // Luego la reserva queda como completada para no seguir apareciendo igual
-        $reserva = Reserva::findOrFail($id);
-        
-        $reserva->update([
-            'ingresado' => true,
-            'estado' => 'Completado'
-        ]);
-
-        return redirect()->back()->with('success', '¡Check-in exitoso! Jugadores en la cancha.');
-    }
-
-    public function updateYapeQr(Request $request)
-    {
+        // 1. Validamos que la fecha final sea DESPUÉS de la inicial
         $request->validate([
-            'qr_yape' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'cancha_id' => 'required|exists:canchas,id',
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after:fecha_inicio',
+            'motivo' => 'required|string|max:255',
         ]);
 
-        if ($request->hasFile('qr_yape')) {
-            $request->file('qr_yape')->storeAs('/', 'yape_qr.png', 'public');
+        // 2. Verificamos que no haya otro mantenimiento activo en ese mismo rango
+        $solapamiento = Mantenimiento::where('cancha_id', $request->cancha_id)
+            ->whereIn('estado', ['Programado', 'En proceso'])
+            ->where(function ($query) use ($request) {
+                $query->where('fecha_inicio', '<', $request->fecha_fin)
+                      ->where('fecha_fin', '>', $request->fecha_inicio);
+            })
+            ->exists();
+
+        if ($solapamiento) {
+            return redirect()->back()->with('error', 'Error: La cancha ya tiene otro mantenimiento programado que cruza con estas fechas.');
         }
 
-        return redirect()->back()->with('success', 'Código QR de Yape actualizado correctamente.');
+        // 3. Creamos el mantenimiento
+        $mantenimiento = Mantenimiento::create([
+            'cancha_id' => $request->cancha_id,
+            'fecha_inicio' => $request->fecha_inicio,
+            'fecha_fin' => $request->fecha_fin,
+            'motivo' => $request->motivo,
+            'estado' => 'Programado' // Por defecto nace como Programado
+        ]);
+
+        // 4. Magia automática: Cancelar reservas que ya existían en esas fechas
+        $canceladas = $this->cancelarReservasAfectadas($mantenimiento);
+
+        $mensaje = 'Mantenimiento registrado correctamente.';
+        if ($canceladas > 0) {
+            $mensaje .= " Se han cancelado automáticamente $canceladas reserva(s) que chocaban con este horario.";
+        }
+
+        return redirect()->back()->with('success', $mensaje);
     }
 
-    public function showScanForm()
+    public function update(Request $request, $id)
     {
-        $reserva = null;
-        if (session('last_reserva_id')) {
-            $reserva = Reserva::with(['user', 'cancha'])->find(session('last_reserva_id'));
+        $mantenimiento = Mantenimiento::findOrFail($id);
+
+        $request->validate([
+            'fecha_inicio' => 'required|date',
+            'fecha_fin' => 'required|date|after:fecha_inicio',
+            'motivo' => 'required|string|max:255',
+            'estado' => 'required|in:Programado,En proceso,Finalizado,Cancelado',
+        ]);
+
+        // Solo validamos solapamientos si el mantenimiento está activo
+        if (in_array($request->estado, ['Programado', 'En proceso'])) {
+            $solapamiento = Mantenimiento::where('cancha_id', $mantenimiento->cancha_id)
+                ->where('id', '!=', $id) // Excluimos este mismo registro
+                ->whereIn('estado', ['Programado', 'En proceso'])
+                ->where(function ($query) use ($request) {
+                    $query->where('fecha_inicio', '<', $request->fecha_fin)
+                          ->where('fecha_fin', '>', $request->fecha_inicio);
+                })
+                ->exists();
+
+            if ($solapamiento) {
+                return redirect()->back()->with('error', 'Error: Las nuevas fechas chocan con otro mantenimiento activo.');
+            }
         }
-        return view('admin.reservas.scan', ['last_reserva' => $reserva]);
+
+        $mantenimiento->update($request->only(['fecha_inicio', 'fecha_fin', 'motivo', 'estado']));
+
+        // Si se reprogramó a nuevas fechas, volvemos a barrer las reservas por si hay nuevos choques
+        if (in_array($mantenimiento->estado, ['Programado', 'En proceso'])) {
+            $this->cancelarReservasAfectadas($mantenimiento);
+        }
+
+        return redirect()->back()->with('success', 'Mantenimiento actualizado.');
     }
 
-    public function verifyQrCode(Request $request)
+    public function destroy($id)
     {
-        $request->validate(['codigo_acceso' => 'required|string|max:255']);
+        // REQUERIMIENTO: Los mantenimientos no deben eliminarse sino manejarse mediante estados.
+        $mantenimiento = Mantenimiento::findOrFail($id);
+        $mantenimiento->update(['estado' => 'Cancelado']);
 
-        $codigo = trim($request->input('codigo_acceso'));
-        $reserva = Reserva::with(['user', 'cancha'])->where('codigo_acceso', $codigo)->first();
+        return redirect()->back()->with('success', 'Mantenimiento cancelado. (Historial conservado).');
+    }
 
-        if (!$reserva) {
-            return redirect()->route('admin.reservas.showscan')->with('error', 'El código de acceso no es válido. No se encontró ninguna reserva.');
+    /**
+     * Función privada que busca y cancela reservas cruzadas
+     */
+    private function cancelarReservasAfectadas(Mantenimiento $mantenimiento)
+    {
+        // Buscamos todas las reservas activas
+        $reservas = Reserva::where('cancha_id', $mantenimiento->cancha_id)
+            ->whereIn('estado', ['Pendiente', 'Aprobada']) 
+            ->get();
+
+        $contadorCanceladas = 0;
+
+        foreach ($reservas as $reserva) {
+            // Usamos tu columna fecha y las juntamos con hora_inicio y hora_fin
+            $inicioReserva = Carbon::parse($reserva->fecha . ' ' . $reserva->hora_inicio);
+            $finReserva = Carbon::parse($reserva->fecha . ' ' . $reserva->hora_fin);
+
+            // Matemáticas de solapamiento
+            if ($inicioReserva < $mantenimiento->fecha_fin && $finReserva > $mantenimiento->fecha_inicio) {
+                // ¡Choque detectado! Cancelamos la reserva y usamos tu columna tipo_cancelacion
+                $reserva->update([
+                    'estado' => 'Cancelada',
+                    'tipo_cancelacion' => 'Por Mantenimiento' // 👈 Aprovechamos tu columna
+                ]);
+                $contadorCanceladas++;
+            }
         }
 
-        // Pasamos el ID de la reserva a la sesión en lugar del objeto completo
-        if ($reserva->estado !== 'Verificado') {
-            return redirect()->route('admin.reservas.showscan')->with([
-                'error' => 'Esta reserva no está en un estado válido para el check-in. Su estado actual es: ' . $reserva->estado,
-                'last_reserva_id' => $reserva->id
-            ]);
-        }
-
-        if ($reserva->ingresado) {
-            return redirect()->route('admin.reservas.showscan')->with([
-                'success' => 'Este jugador ya había sido marcado como ingresado.',
-                'last_reserva_id' => $reserva->id
-            ]);
-        }
-        
-        if ($reserva->fecha !== Carbon::now()->format('Y-m-d')) {
-             return redirect()->route('admin.reservas.showscan')->with([
-                'error' => 'El check-in solo se puede hacer el mismo día de la reserva.',
-                'last_reserva_id' => $reserva->id
-            ]);
-        }
-
-        $reserva->update([
-            'ingresado' => true,
-            'estado' => 'Completado'
-        ]);
-
-        return redirect()->route('admin.reservas.showscan')->with([
-            'success' => '¡Check-in exitoso! Jugadores en la cancha.',
-            'last_reserva_id' => $reserva->id
-        ]);
+        return $contadorCanceladas;
     }
 }

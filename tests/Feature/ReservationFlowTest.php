@@ -18,8 +18,8 @@ class ReservationFlowTest extends TestCase
         $user = User::factory()->create();
         $cancha = $this->crearCancha();
 
-        $this->crearTarifa($cancha->id, 'Mañana', 35);
-        $this->crearTarifa($cancha->id, 'Tarde', 45);
+        $this->crearTarifa($cancha->id, '06:00', '12:00', 35); // Tarifa Mañana
+        $this->crearTarifa($cancha->id, '12:00', '18:00', 45); // Tarifa Tarde
 
         // Esta prueba revisa que una reserva de dos horas sume dos turnos distintos
         // Sirve para confirmar que el precio viene de tarifas y no de un numero fijo
@@ -38,7 +38,7 @@ class ReservationFlowTest extends TestCase
         $user = User::factory()->create();
         $cancha = $this->crearCancha();
 
-        $this->crearTarifa($cancha->id, 'Noche', 70);
+        $this->crearTarifa($cancha->id, '18:00', '23:00', 70); // Tarifa Noche
 
         // Se manda una reserva normal como si viniera desde el modal del cliente
         // Luego se revisa que el total guardado sea el precio de la tarifa nocturna
@@ -143,14 +143,16 @@ class ReservationFlowTest extends TestCase
         ], $attributes));
     }
 
-    private function crearTarifa(int $canchaId, string $turno, float $precio): Tarifa
+    private function crearTarifa(int $canchaId, string $horaInicio, string $horaFin, float $precio): Tarifa
     {
         // Crea una tarifa rapida para la cancha usada en la prueba
         // Asi cada caso controla sus propios precios sin depender de seeders
         return Tarifa::create([
             'cancha_id' => $canchaId,
-            'turno' => $turno,
+            'hora_inicio' => $horaInicio,
+            'hora_fin' => $horaFin,
             'precio_hora' => $precio,
+            'estado' => 'Activa',
         ]);
     }
 }

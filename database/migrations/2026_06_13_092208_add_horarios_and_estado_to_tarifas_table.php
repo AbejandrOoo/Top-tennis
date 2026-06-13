@@ -8,27 +8,25 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     *
-     * @return void
      */
     public function up(): void
     {
         Schema::table('tarifas', function (Blueprint $table) {
-            // Agregamos la columna 'estado' con 'Activa' como valor por defecto.
-            // La coloco después de 'precio_hora' para mantener un orden lógico en la tabla.
-            $table->string('estado')->default('Activa')->after('precio_hora');
+            // Agregamos las nuevas columnas
+            $table->time('hora_inicio')->nullable()->after('precio_hora');
+            $table->time('hora_fin')->nullable()->after('hora_inicio');
+            $table->string('estado')->default('Activa')->after('hora_fin'); // Activa o Inactiva
         });
     }
 
     /**
      * Reverse the migrations.
-     *
-     * @return void
      */
     public function down(): void
     {
         Schema::table('tarifas', function (Blueprint $table) {
-            $table->dropColumn('estado');
+            // Si nos arrepentimos, esto borra las columnas
+            $table->dropColumn(['hora_inicio', 'hora_fin', 'estado']);
         });
     }
 };

@@ -84,10 +84,10 @@ class DashboardController extends Controller
                 $query->where('hora_inicio', '<', $horaFinCalculada)->where('hora_fin', '>', $horaInicioFormateada);
             })->pluck('cancha_id');
 
+        // Filtramos las canchas usando únicamente la tabla de reservas activa y el estado disponible
+        // AQUÍ SE ELIMINÓ LA CONSULTA ROTA A "MANTENIMIENTOS"
         $canchas = Cancha::whereNotIn('id', $canchasOcupadasIds)->where('estado', 'Disponible')->get();
 
-        // A cada cancha libre se le agrega su total para mostrarlo en pantalla
-        // El calculo sale de tarifas y mantiene un respaldo si falta algun dato
         $canchas->each(function ($cancha) use ($carbonInicio, $duracionInput) {
             $cancha->total_reserva = $this->calcularTotalReserva($cancha->id, $carbonInicio, $duracionInput);
         });
@@ -307,38 +307,24 @@ class DashboardController extends Controller
     private function calcularTotalReserva(int $canchaId, Carbon $horaInicio, int $duracion): float
     {
         $total = 0;
-
-        // Sumamos cada hora por separado porque una reserva puede cruzar turnos
-        // De esta forma el total queda mas cercano a la tarifa real
+        
+        // Sumamos por cada hora de duración
         for ($i = 0; $i < $duracion; $i++) {
-            $horaEvaluada = $horaInicio->copy()->addHours($i)->hour;
-            $turno = $this->determinarTurno($horaEvaluada);
+            $horaActual = $horaInicio->copy()->addHours($i);
+            $horaEvaluadaString = $horaActual->format('H:i:s');
 
-            $precio = Tarifa::where('cancha_id', $canchaId)
-                ->where('turno', $turno)
-                ->value('precio_hora');
+            // Buscamos la tarifa activa que corresponde a la cancha y a la hora específica
+            $tarifa = Tarifa::where('cancha_id', $canchaId)
+                ->where('estado', 'Activa')
+                ->where('hora_inicio', '<=', $horaEvaluadaString)
+                ->where('hora_fin', '>', $horaEvaluadaString)
+                ->first();
 
-            $total += $precio ?? $this->precioRespaldoPorHora($horaEvaluada);
+            $total += $tarifa->precio_hora ?? $this->precioRespaldoPorHora($horaActual->hour);
         }
 
         return (float) $total;
     }
-
-    private function determinarTurno(int $hora): string
-    {
-        // Se usa la misma division simple de turnos que ve el administrador
-        // Esto conecta el horario elegido con el precio guardado
-        if ($hora < 12) {
-            return 'Mañana';
-        }
-
-        if ($hora < 18) {
-            return 'Tarde';
-        }
-
-        return 'Noche';
-    }
-
     private function precioRespaldoPorHora(int $hora): float
     {
         // Precio de respaldo para no romper reservas si falta configurar tarifas
