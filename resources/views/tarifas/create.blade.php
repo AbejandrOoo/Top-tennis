@@ -8,7 +8,8 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             
-            <!-- Mostrar errores de validación si existen -->
+            {{-- Aca verificamos si paso algo raro o si el sistema devolvio alguna queja --}}
+            {{-- para avisarle a la persona antes de que siga con lo suyo en la pagina --}}
             @if ($errors->any())
                 <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
                     <strong>¡Uy! Hubo un problema:</strong>
@@ -22,23 +23,25 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    {{-- Formulario para crear un precio nuevo y asociarlo a una cancha --}}
-                    {{-- El controlador valida que no se repita el turno en la misma cancha --}}
+                    {{-- Todo esto es la estructura para mandar los datos de cuanto vamos a cobrar dependiendo del horario --}}
+                    {{-- y a donde pertenece ese precio ademas cuidamos que no se nos mezclen los horarios repetidos --}}
                     <form action="{{ route('tarifas.store') }}" method="POST">
                         @csrf
 
-                        <!-- Selección de Cancha -->
+                        {{-- Esta parte es vital porque necesitamos saber exactamente a cual de todas las pistas --}}
+                        {{-- le estamos poniendo este valor para que luego al cobrar salga bien la cuenta --}}
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Seleccionar Cancha:</label>
                             <select name="cancha_id" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">-- Elige una cancha --</option>
                                 @foreach($canchas as $cancha)
-                                    <option value="{{ $cancha->id }}">{{ $cancha->nombre }} ({{ $cancha->superficie }})</option>
+                                    <option value="{{ $cancha->id }}">{{ $cancha->nombre }} - Superficie: {{ $cancha->superficie }}</option>
                                 @endforeach
                             </select>
                         </div>
 
-                        <!-- Turno -->
+                        {{-- Aca definimos el momento del dia en que aplica el cobro ya sea por la manana --}}
+                        {{-- por la tarde o por la noche para mantener un orden bien claro --}}
                         <div class="mb-4">
                             <label class="block text-gray-700 text-sm font-bold mb-2">Turno:</label>
                             <select name="turno" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -49,14 +52,15 @@
                             </select>
                         </div>
 
-                        {{-- Precio que luego se usa para calcular el total de la reserva --}}
-                        {{-- Se guarda por hora para poder sumar reservas de una o dos horas --}}
+                        {{-- Este es el valor monetario que pedimos por sesion de sesenta minutos y es re importante --}}
+                        {{-- porque con esto el sistema hace toda la matematica para sacar la cuenta al final del dia --}}
                         <div class="mb-6">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Precio por Hora (S/.):</label>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Precio por Hora en Soles:</label>
                             <input type="number" name="precio_hora" step="0.01" min="0" placeholder="Ej: 50.00" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
 
-                        <!-- Botones -->
+                        {{-- Al final dejamos las opciones de accion para que todo el esfuerzo de llenar la informacion --}}
+                        {{-- se guarde de verdad o por si deciden arrepentirse y echar todo para atras --}}
                         <div style="display: flex; gap: 15px; align-items: center;">
                             <button type="submit" style="background-color: #2563eb !important; color: #ffffff !important; font-weight: bold !important; padding: 10px 20px !important; border-radius: 8px !important; border: none !important; cursor: pointer !important; font-size: 14px !important;">
                                 Guardar Tarifa

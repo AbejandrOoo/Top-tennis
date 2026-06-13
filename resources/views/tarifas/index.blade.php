@@ -12,6 +12,8 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {{-- Aca revisamos si acabamos de hacer algun cambio importante de manera correcta --}}
+            {{-- para pintar un cartel verde y que la persona sepa que todo salio super bien --}}
             @if(session('success'))
                 <div class="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg shadow-sm">
                     {{ session('success') }}
@@ -20,10 +22,12 @@
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    {{-- Tabla principal de tarifas registradas por cancha y turno --}}
-                    {{-- Desde aqui se entra a editar o eliminar cada precio --}}
+                    {{-- Todo este pedazo de codigo sirve para armar el cuadro principal donde mostramos --}}
+                    {{-- la lista completita de precios que tenemos guardados por cada turno y por cada cancha --}}
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
+                            {{-- Esta es la cabecera del cuadro donde le ponemos nombre a cada columna --}}
+                            {{-- para que la persona entienda que informacion esta viendo en la fila de abajo --}}
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Cancha</th>
@@ -33,6 +37,8 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
+                                {{-- Aca el sistema da un monton de vueltas por cada uno de los precios guardados --}}
+                                {{-- y va pintando una linea nueva con sus datos para llenar toda la tabla --}}
                                 @forelse($tarifas as $tarifa)
                                     <tr class="hover:bg-gray-50 transition duration-150">
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
@@ -45,6 +51,8 @@
                                             S/. {{ number_format($tarifa->precio_hora, 2) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                            {{-- Y finalmente aca ponemos los botones magicos para arreglar algun --}}
+                                            {{-- precio que quedo mal o de plano para borrarlo si ya no nos sirve mas --}}
                                             <div style="display: flex !important; justify-content: center !important; align-items: center !important;">
                                                 <a href="{{ route('tarifas.edit', $tarifa) }}" style="color: #4f46e5 !important; font-weight: bold !important; margin-right: 25px !important; text-decoration: none !important;">
                                                     Editar
@@ -60,6 +68,8 @@
                                         </td>
                                     </tr>
                                 @empty
+                                    {{-- Este mensaje salvavidas aparece solito cuando el sistema no encuentra --}}
+                                    {{-- absolutamente nada para mostrar y asi la tabla no queda completamente en blanco --}}
                                     <tr>
                                         <td colspan="4" class="px-6 py-10 text-center text-sm text-gray-500">
                                             No hay tarifas registradas todavía.
