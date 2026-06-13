@@ -75,4 +75,12 @@
             </div>
         </div>
     </div>
+<<<<<<< ours
+<<<<<<< ours
 </x-app-layout>
+=======
+</x-app-layout>
+>>>>>>> theirs
+=======
+</x-app-layout>
+>>>>>>> theirs

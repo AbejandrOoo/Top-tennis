@@ -5,6 +5,7 @@
         showReprogramarModal: false,
         canchaSeleccionada: '', 
         canchaId: '', 
+        precioSeleccionado: '0.00',
         reservaId: '',
         metodoPago: 'yape',
         horaSeleccionada: '{{ request('hora', \Carbon\Carbon::now()->addHour()->format('H:00')) }}',
@@ -13,18 +14,7 @@
         // Modal de Reprogramación interactivo
         fechaReprogramar: '{{ date('Y-m-d') }}',
         fechaHoyServer: '{{ date('Y-m-d') }}',
-        horaActualServer: {{ \Carbon\Carbon::now()->hour }},
-        
-        get precioReal() {
-            let horaInt = parseInt(this.horaSeleccionada.split(':')[0]);
-            let duracionInt = parseInt(this.duracionSeleccionada);
-            let total = 0;
-            for (let i = 0; i < duracionInt; i++) {
-                let currentHour = horaInt + i;
-                total += (currentHour >= 18) ? 60.00 : 50.00;
-            }
-            return total.toFixed(2);
-        }
+        horaActualServer: {{ \Carbon\Carbon::now()->hour }}
     }" class="py-8 bg-gray-50 min-h-screen relative">
         
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -192,7 +182,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     @foreach($canchas as $cancha)
                         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden">
-                            <div class="absolute top-4 right-4 bg-[#7cb518] text-white text-xs font-black px-3 py-1 rounded-full z-10 shadow-md">Total: S/. {{ number_format($totalPreview, 2) }}</div>
+                            <div class="absolute top-4 right-4 bg-[#7cb518] text-white text-xs font-black px-3 py-1 rounded-full z-10 shadow-md">Total: S/. {{ number_format($cancha->total_reserva, 2) }}</div>
                             <div class="h-48 bg-gray-100 border-b flex items-center justify-center">
                                 @if($cancha->foto)
                                     <img src="{{ asset('storage/' . $cancha->foto) }}" class="w-full h-full object-cover">
@@ -211,7 +201,7 @@
                                 </div>
                             </div>
                             <div class="p-6 pt-0 mt-auto">
-                                <button @click="showPaymentModal = true; canchaSeleccionada = '{{ $cancha->nombre }}'; canchaId = '{{ $cancha->id }}'" class="w-full bg-white border-2 border-[#7cb518] text-[#7cb518] hover:bg-[#7cb518] hover:text-white font-black py-3 rounded-xl transition duration-300">
+                                <button @click="showPaymentModal = true; canchaSeleccionada = '{{ $cancha->nombre }}'; canchaId = '{{ $cancha->id }}'; precioSeleccionado = '{{ number_format($cancha->total_reserva, 2, '.', '') }}'" class="w-full bg-white border-2 border-[#7cb518] text-[#7cb518] hover:bg-[#7cb518] hover:text-white font-black py-3 rounded-xl transition duration-300">
                                     RESERVAR AHORA
                                 </button>
                             </div>
@@ -242,7 +232,7 @@
                             <h3 class="text-lg font-black text-white">Pre-Reserva</h3>
                             <p class="text-xs text-[#a7c957]" x-text="canchaSeleccionada"></p>
                         </div>
-                        <div class="text-right text-white"><span class="text-xl font-black">S/. <span x-text="precioReal"></span></span></div>
+                        <div class="text-right text-white"><span class="text-xl font-black">S/. <span x-text="precioSeleccionado"></span></span></div>
                     </div>
                     
                     <div class="p-6">

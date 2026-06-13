@@ -1,58 +1,186 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Top Tennis
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema web para administrar reservas de canchas de tenis. El proyecto esta construido con Laravel, Breeze, Tailwind CSS y Vite.
 
-## About Laravel
+## Objetivo
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Top Tennis permite que los clientes reserven canchas disponibles y que el administrador controle canchas, tarifas, pagos y asistencia.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Funciones principales
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Registro e inicio de sesion de usuarios.
+- Panel de cliente para buscar canchas por fecha, hora y duracion.
+- Reserva de canchas con pago por Yape o efectivo en caja.
+- Control de choques de horario para evitar dobles reservas.
+- Limite de 3 reservas activas por usuario.
+- Cancelacion y reprogramacion con reglas de tiempo.
+- Panel administrador para aprobar, rechazar y hacer check-in de reservas.
+- CRUD de canchas.
+- CRUD de tarifas por cancha y turno.
+- Limpieza automatica de reservas expiradas y marcacion de no-shows.
+- Historial automatico de cambios de reservas.
 
-## Learning Laravel
+## Requisitos
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- PHP 8.3 o superior.
+- Composer.
+- Node.js y npm.
+- MySQL.
+- Extension PHP para la base usada en pruebas. Para PHPUnit, el archivo `phpunit.xml` usa SQLite en memoria, por eso se necesita `pdo_sqlite`.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Instalacion
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+1. Instalar dependencias PHP:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+2. Instalar dependencias frontend:
 
-## Contributing
+```bash
+npm install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+3. Copiar el archivo de entorno:
 
-## Code of Conduct
+```bash
+copy .env.example .env
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+4. Generar la clave de Laravel:
 
-## Security Vulnerabilities
+```bash
+php artisan key:generate
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+5. Configurar la base de datos en `.env`:
 
-## License
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=top_tennis_digital
+DB_USERNAME=root
+DB_PASSWORD=
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+6. Ejecutar migraciones y seeders:
+
+```bash
+php artisan migrate --seed
+```
+
+7. Crear el enlace de almacenamiento para fotos de canchas:
+
+```bash
+php artisan storage:link
+```
+
+## Usuarios de prueba
+
+El seeder crea dos usuarios iniciales:
+
+| Rol | Correo | Password |
+| --- | --- | --- |
+| Admin | `admin@toptennis.test` | `password` |
+| Cliente | `cliente@toptennis.test` | `password` |
+
+## Ejecucion
+
+Levantar Laravel:
+
+```bash
+php artisan serve
+```
+
+Levantar Vite:
+
+```bash
+npm run dev
+```
+
+En PowerShell, si `npm run dev` falla por politica de ejecucion, usar:
+
+```bash
+npm.cmd run dev
+```
+
+Tambien se puede compilar frontend para produccion:
+
+```bash
+npm.cmd run build
+```
+
+## Rutas importantes
+
+- Cliente: `/dashboard`
+- Admin: `/admin/dashboard`
+- Canchas admin: `/admin/canchas`
+- Tarifas admin: `/admin/tarifas`
+- Login: `/login`
+- Registro: `/register`
+
+## Tarifas y reservas
+
+Las tarifas se registran por cancha y turno:
+
+- `Mañana`: antes de 12:00
+- `Tarde`: desde 12:00 hasta 17:59
+- `Noche`: desde 18:00
+
+Cuando un cliente reserva, el sistema calcula el precio usando la tarifa configurada para la cancha. Si la reserva dura 2 horas, suma cada hora por separado. Esto permite que una reserva que cruza de mañana a tarde tenga un total correcto.
+
+Si una tarifa no existe, el sistema usa un precio de respaldo para no bloquear la reserva:
+
+- Antes de 18:00: S/. 50.00
+- Desde 18:00: S/. 60.00
+
+## Limpieza automatica
+
+El comando `reservas:limpiar` marca:
+
+- Reservas Yape pendientes como `Expirado` si pasaron 30 minutos.
+- Reservas verificadas como `No_Show` si termino el horario y el cliente no hizo check-in.
+
+El comando esta programado en `routes/console.php` para ejecutarse cada minuto:
+
+```bash
+php artisan schedule:work
+```
+
+## Pruebas
+
+Ejecutar pruebas:
+
+```bash
+php artisan test
+```
+
+O con PHPUnit:
+
+```bash
+vendor\bin\phpunit.bat
+```
+
+Nota: en este proyecto las pruebas usan SQLite en memoria segun `phpunit.xml`. Si aparece `could not find driver`, falta habilitar `pdo_sqlite` en PHP.
+
+## Pruebas agregadas al flujo de reservas
+
+Archivo: `tests/Feature/ReservationFlowTest.php`
+
+Cubren:
+
+- El dashboard muestra el total usando tarifas configuradas.
+- Una reserva se crea con el total calculado por tarifas.
+- Una cancha ocupada no aparece si el horario se cruza.
+- Un usuario no puede tener mas de 3 reservas activas.
+
+## Puntos para exposicion
+
+- `Route::resource('tarifas')->except(['show'])` evita crear una ruta que no se usa.
+- El campo `rol` permite separar clientes y administradores.
+- `updateOrCreate` en el seeder evita duplicar usuarios al ejecutar varias veces.
+- El precio de reserva ahora viene del modulo de tarifas, no de valores fijos.
+- `lockForUpdate` ayuda a evitar que dos usuarios tomen el mismo horario al mismo tiempo.
+- El historial de reservas se registra automaticamente desde el modelo `Reserva`.

@@ -40,7 +40,7 @@
                                             {{ $tarifa->turno }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-600">
-                                            $ {{ number_format($tarifa->precio_hora, 2) }}
+                                            S/. {{ number_format($tarifa->precio_hora, 2) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                             <div style="display: flex !important; justify-content: center !important; align-items: center !important;">

@@ -17,6 +17,9 @@
                         <x-nav-link :href="route('admin.canchas.index')" :active="request()->routeIs('admin.canchas.*')">
                             ⚙ Mantenimiento Canchas (CRUD 1)
                         </x-nav-link>
+                        <x-nav-link :href="route('tarifas.index')" :active="request()->routeIs('tarifas.*')">
+                            Tarifas
+                        </x-nav-link>
                     @endif
                 </div>
             </div>
@@ -72,6 +75,9 @@
             @if(Auth::check() && Auth::user()->rol === 'admin')
                 <x-responsive-nav-link :href="route('admin.canchas.index')" :active="request()->routeIs('admin.canchas.*')">
                     ⚙ Mantenimiento Canchas
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tarifas.index')" :active="request()->routeIs('tarifas.*')">
+                    Tarifas
                 </x-responsive-nav-link>
             @endif
         </div>

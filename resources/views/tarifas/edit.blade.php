@@ -46,7 +46,7 @@
                         </div>
 
                         <div class="mb-6">
-                            <label class="block text-gray-700 text-sm font-bold mb-2">Precio por Hora ($):</label>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Precio por Hora (S/.):</label>
                             <input type="number" name="precio_hora" value="{{ old('precio_hora', $tarifa->precio_hora) }}" step="0.01" min="0" required class="w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         </div>
 

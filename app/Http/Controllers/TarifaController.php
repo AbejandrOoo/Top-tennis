@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tarifa;
 use App\Models\Cancha;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TarifaController extends Controller
 {
@@ -29,7 +30,15 @@ class TarifaController extends Controller
     {
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
-            'turno' => 'required|string|max:50',
+            // Una cancha solo debe tener una tarifa por turno para evitar precios duplicados.
+            'turno' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('tarifas')->where(fn ($query) => $query
+                    ->where('cancha_id', $request->cancha_id)
+                    ->whereNull('deleted_at')),
+            ],
             'precio_hora' => 'required|numeric|min:0',
         ]);
 
@@ -50,7 +59,17 @@ class TarifaController extends Controller
     {
         $request->validate([
             'cancha_id' => 'required|exists:canchas,id',
-            'turno' => 'required|string|max:50',
+            // Ignoramos la tarifa actual para permitir guardar sin cambiar el turno.
+            'turno' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('tarifas')
+                    ->where(fn ($query) => $query
+                        ->where('cancha_id', $request->cancha_id)
+                        ->whereNull('deleted_at'))
+                    ->ignore($tarifa->id),
+            ],
             'precio_hora' => 'required|numeric|min:0',
         ]);
 

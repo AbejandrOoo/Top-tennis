@@ -1,25 +1,31 @@
 <?php
 
-namespace App\Models;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
-use Illuminate\Database\Eloquent\Model;
-
-class HistorialReserva extends Model
+return new class extends Migration
 {
-    protected $table = 'historial_reservas';
-
-    protected $fillable = [
-        'reserva_id',
-        'accion',
-        'fecha_registro',
-        'descripcion'
-    ];
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('historial_reservas', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('reserva_id')->constrained('reservas')->onDelete('cascade');
+            $table->string('accion');
+            $table->timestamp('fecha_registro');
+            $table->text('descripcion')->nullable();
+            $table->timestamps();
+        });
+    }
 
     /**
-     * Relación inversa: Un historial le pertenece a una reserva.
+     * Reverse the migrations.
      */
-    public function reserva()
+    public function down(): void
     {
-        return $this->belongsTo(Reserva::class);
+        Schema::dropIfExists('historial_reservas');
     }
-}
+};

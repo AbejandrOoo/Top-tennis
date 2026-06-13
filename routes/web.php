@@ -4,9 +4,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminCanchaController; 
+use App\Http\Controllers\TarifaController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\CanchaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,7 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// RUTAS DEL ADMINISTRADOR (PANEL PRINCIPAL + CRUD CANCHAS)
+// RUTAS DEL ADMINISTRADOR (PANEL PRINCIPAL + CRUD CANCHAS Y TARIFAS)
 Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'index'])->name('admin.dashboard');
     
@@ -53,6 +53,11 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::post('/reservas/{id}/aprobar', [AdminController::class, 'aprobar'])->name('admin.reservas.aprobar');
     Route::post('/reservas/{id}/rechazar', [AdminController::class, 'rechazar'])->name('admin.reservas.rechazar');
     Route::post('/reservas/{id}/checkin', [AdminController::class, 'checkin'])->name('admin.reservas.checkin');
+
+    // CRUD TARIFAS
+    // Excluimos "show" porque el sistema solo lista, crea, edita y elimina tarifas.
+    // Asi evitamos una ruta a un metodo que no existe en TarifaController.
+    Route::resource('tarifas', TarifaController::class)->except(['show']);
 });
 
 // CARGA DE AUTENTICACIÓN

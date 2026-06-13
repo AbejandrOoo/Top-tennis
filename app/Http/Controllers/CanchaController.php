@@ -79,4 +79,12 @@ class AdminCanchaController extends Controller
 
         return redirect()->route('admin.canchas.index')->with('success', 'El estado de la cancha ha sido modificado.');
     }
+<<<<<<< ours
+<<<<<<< ours
 }
+=======
+}
+>>>>>>> theirs
+=======
+}
+>>>>>>> theirs

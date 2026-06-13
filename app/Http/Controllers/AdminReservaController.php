@@ -81,4 +81,12 @@ class AdminReservaController extends Controller
             'hora' => $reserva->hora_inicio
         ]);
     }
+<<<<<<< ours
+<<<<<<< ours
 }
+=======
+}
+>>>>>>> theirs
+=======
+}
+>>>>>>> theirs

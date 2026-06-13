@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Cancha;
 use App\Models\Reserva;
+use App\Models\Tarifa;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -60,13 +61,13 @@ class DashboardController extends Controller
 
         $canchas = Cancha::whereNotIn('id', $canchasOcupadasIds)->where('estado', 'Disponible')->get();
 
-        $totalPreview = 0;
-        for ($i = 0; $i < $duracionInput; $i++) {
-            $horaEvaluada = $carbonInicio->copy()->addHours($i)->hour;
-            $totalPreview += ($horaEvaluada >= 18) ? 60.00 : 50.00;
-        }
+        // Calculamos el precio segun la tarifa registrada para cada cancha.
+        // Si una tarifa falta, usamos el precio anterior como respaldo.
+        $canchas->each(function ($cancha) use ($carbonInicio, $duracionInput) {
+            $cancha->total_reserva = $this->calcularTotalReserva($cancha->id, $carbonInicio, $duracionInput);
+        });
 
-        return view('dashboard', compact('canchas', 'fecha', 'horaInicioInput', 'duracionInput', 'totalPreview'));
+        return view('dashboard', compact('canchas', 'fecha', 'horaInicioInput', 'duracionInput'));
     }
 
     public function reservar(Request $request)
@@ -114,11 +115,8 @@ class DashboardController extends Controller
                 return redirect()->back()->with('error', 'Lo sentimos, alguien más acaba de tomar este horario exacto.');
             }
 
-            $totalCobrar = 0;
-            for ($i = 0; $i < (int)$request->duracion; $i++) {
-                $horaEvaluada = $carbonInicio->copy()->addHours($i)->hour;
-                $totalCobrar += ($horaEvaluada >= 18) ? 60.00 : 50.00;
-            }
+            // El total se toma de la tabla tarifas para que el admin controle los precios.
+            $totalCobrar = $this->calcularTotalReserva($request->cancha_id, $carbonInicio, (int) $request->duracion);
 
             Reserva::create([
                 'user_id' => Auth::id(), 'cancha_id' => $request->cancha_id, 'fecha' => $request->fecha,
@@ -202,11 +200,8 @@ class DashboardController extends Controller
 
         if ($cruceHorario) { return redirect()->back()->with('error', 'La cancha no está disponible en ese horario.'); }
 
-        $nuevoTotal = 0;
-        for ($i = 0; $i < $reserva->duracion; $i++) {
-            $horaEvaluada = $carbonInicio->copy()->addHours($i)->hour;
-            $nuevoTotal += ($horaEvaluada >= 18) ? 60.00 : 50.00;
-        }
+        // Recalculamos con tarifas reales para respetar los precios configurados.
+        $nuevoTotal = $this->calcularTotalReserva($reserva->cancha_id, $carbonInicio, $reserva->duracion);
 
         // SOLUCIÓN "EL ROBO PERFECTO"
         if ($nuevoTotal > $reserva->total) {
@@ -230,5 +225,44 @@ class DashboardController extends Controller
         }
         $reserva->delete();
         return redirect()->back()->with('success', 'Ticket eliminado de tu historial correctamente.');
+    }
+
+    private function calcularTotalReserva(int $canchaId, Carbon $horaInicio, int $duracion): float
+    {
+        $total = 0;
+
+        // Sumamos hora por hora porque una reserva de 2 horas puede cruzar turnos.
+        for ($i = 0; $i < $duracion; $i++) {
+            $horaEvaluada = $horaInicio->copy()->addHours($i)->hour;
+            $turno = $this->determinarTurno($horaEvaluada);
+
+            $precio = Tarifa::where('cancha_id', $canchaId)
+                ->where('turno', $turno)
+                ->value('precio_hora');
+
+            $total += $precio ?? $this->precioRespaldoPorHora($horaEvaluada);
+        }
+
+        return (float) $total;
+    }
+
+    private function determinarTurno(int $hora): string
+    {
+        // Mismos turnos que se registran en el CRUD de tarifas.
+        if ($hora < 12) {
+            return 'Mañana';
+        }
+
+        if ($hora < 18) {
+            return 'Tarde';
+        }
+
+        return 'Noche';
+    }
+
+    private function precioRespaldoPorHora(int $hora): float
+    {
+        // Respaldo temporal: mantiene el comportamiento anterior si aun no hay tarifa.
+        return $hora >= 18 ? 60.00 : 50.00;
     }
 }
