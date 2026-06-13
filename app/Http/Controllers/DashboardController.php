@@ -92,7 +92,12 @@ class DashboardController extends Controller
             $cancha->total_reserva = $this->calcularTotalReserva($cancha->id, $carbonInicio, $duracionInput);
         });
 
-        return view('dashboard', compact('canchas', 'fecha', 'horaInicioInput', 'duracionInput'));
+        // Cargamos las reservas del usuario para que pueda ver su historial y tickets QR
+        $reservasUsuario = Reserva::with('cancha')
+            ->where('user_id', Auth::id())
+            ->orderBy('fecha', 'desc')->orderBy('hora_inicio', 'desc')->get();
+
+        return view('dashboard', compact('canchas', 'fecha', 'horaInicioInput', 'duracionInput', 'reservasUsuario'));
     }
 
     public function reservar(Request $request)
@@ -123,11 +128,29 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'Horario no permitido: El club cierra a las 11:00 PM.');
         }
 
+        // Revisamos que la cancha siga disponible y no la hayan puesto en mantenimiento en el interín (condición de carrera)
+        $canchaSeleccionada = Cancha::find($request->cancha_id);
+        if (!$canchaSeleccionada || $canchaSeleccionada->estado !== 'Disponible') {
+            return redirect()->back()->with('error', 'Lo sentimos, esta cancha acaba de ser marcada como No Disponible o en Mantenimiento.');
+        }
+
         // El cliente no debe acumular demasiadas reservas abiertas
         // Esta regla mantiene controlado el uso de las canchas
         $reservasActivas = Reserva::where('user_id', Auth::id())->whereIn('estado', ['Pendiente', 'Verificado'])->count();
         if ($reservasActivas >= 3) {
             return redirect()->back()->with('error', 'Límite superado: No puedes tener más de 3 reservas activas simultáneamente.');
+        }
+
+        // Restricción anti-abuso: Solo se permite 1 reserva en Efectivo por usuario
+        if ($request->metodo_pago === 'efectivo') {
+            $reservasEfectivo = Reserva::where('user_id', Auth::id())
+                ->whereIn('estado', ['Pendiente', 'Verificado'])
+                ->where('metodo_pago', 'efectivo')
+                ->count();
+            
+            if ($reservasEfectivo >= 1) {
+                return redirect()->back()->with('error', 'Límite de seguridad: Solo puedes tener 1 reserva en Efectivo pendiente de pago. Si necesitas más canchas, utiliza Yape.');
+            }
         }
 
         $horaInicio = $carbonInicio->format('H:i:s');
@@ -155,10 +178,13 @@ class DashboardController extends Controller
             // Si falta una tarifa se mantiene un precio de respaldo
             $totalCobrar = $this->calcularTotalReserva($request->cancha_id, $carbonInicio, (int) $request->duracion);
 
+            // Efectivo y Yape entran como Pendiente para que el administrador los valide.
+            $estadoInicial = 'Pendiente';
+
             Reserva::create([
                 'user_id' => Auth::id(), 'cancha_id' => $request->cancha_id, 'fecha' => $request->fecha,
                 'hora_inicio' => $horaInicio, 'hora_fin' => $horaFin, 'duracion' => $request->duracion,
-                'estado' => 'Pendiente', 'metodo_pago' => $request->metodo_pago, 'numero_operacion' => $request->numero_operacion,
+                'estado' => $estadoInicial, 'metodo_pago' => $request->metodo_pago, 'numero_operacion' => $request->numero_operacion,
                 'total' => $totalCobrar, 'monto_pagado' => $request->metodo_pago === 'yape' ? $totalCobrar : 0.00
             ]);
 
@@ -188,21 +214,19 @@ class DashboardController extends Controller
         }
 
         $horasDiferencia = $ahora->diffInHours($fechaReservaCompleta, false);
-        $esReciente = Carbon::now()->subMinutes(30)->lessThanOrEqualTo(Carbon::parse($reserva->created_at));
         
-        $montoReembolso = 0.00;
-        $mensajeAlerta = "Reserva cancelada con éxito.";
+        // Validacion estricta: Solo se permite cancelar si faltan 6 horas o mas para el inicio
+        if ($horasDiferencia < 6) {
+            return redirect()->back()->with('error', 'No puedes cancelar porque faltan menos de 6 horas para tu reserva.');
+        }
 
-        // Solo las reservas pagadas por Yape manejan monto de reembolso
-        // En efectivo no se devuelve dinero desde esta pantalla
+        $montoReembolso = 0.00;
+        $mensajeAlerta = "Reserva cancelada con exito.";
+
+        // Si el pago fue por Yape, se asigna el reembolso total al haber cumplido la regla de las 6 horas
         if ($reserva->metodo_pago === 'yape') {
-            if ($horasDiferencia >= 6 || $esReciente) {
-                $montoReembolso = $reserva->total;
-                $mensajeAlerta = "Cancelación gratuita aprobada. Reembolso total (S/. " . number_format($montoReembolso, 2) . ") pendiente.";
-            } else {
-                $montoReembolso = $reserva->total * 0.50;
-                $mensajeAlerta = "Cancelación con penalidad (Menos de 6 horas). Reembolso del 50% (S/. " . number_format($montoReembolso, 2) . ").";
-            }
+            $montoReembolso = $reserva->total;
+            $mensajeAlerta = "Cancelacion aprobada. Reembolso total (S/. " . number_format($montoReembolso, 2) . ") pendiente.";
         }
 
         $reserva->update(['estado' => 'Cancelada', 'monto_reembolso' => $montoReembolso, 'tipo_cancelacion' => 'usuario']);
@@ -225,10 +249,10 @@ class DashboardController extends Controller
         }
 
         $fechaReservaOriginal = Carbon::parse($reserva->fecha . ' ' . $reserva->hora_inicio);
-        $esReciente = Carbon::now()->subMinutes(30)->lessThanOrEqualTo(Carbon::parse($reserva->created_at));
 
-        if (!$esReciente && Carbon::now()->diffInHours($fechaReservaOriginal, false) < 6) {
-            return redirect()->back()->with('error', 'Solo puedes reprogramar con un mínimo de 6 horas de anticipación.');
+        // Validacion estricta: Solo se permite reprogramar (editar) si faltan 6 horas o mas
+        if (Carbon::now()->diffInHours($fechaReservaOriginal, false) < 6) {
+            return redirect()->back()->with('error', 'No puedes editar porque faltan menos de 6 horas para tu reserva.');
         }
 
         $carbonInicio = Carbon::createFromFormat('H:i', $request->nueva_hora);

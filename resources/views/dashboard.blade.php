@@ -48,10 +48,10 @@
                 <div class="mb-10 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                     <div class="flex space-x-6 border-b border-gray-200 mb-6 pb-2">
                         <button @click="tabActiva = 'activas'" :class="tabActiva === 'activas' ? 'text-[#0b3b24] border-b-2 border-[#0b3b24]' : 'text-gray-400 hover:text-gray-600'" class="pb-2 font-black text-lg transition duration-200">
-                            🟢 Tickets Activos ({{ $activas->count() }})
+                            Tickets Activos ({{ $activas->count() }})
                         </button>
                         <button @click="tabActiva = 'historial'" :class="tabActiva === 'historial' ? 'text-gray-800 border-b-2 border-gray-800' : 'text-gray-400 hover:text-gray-600'" class="pb-2 font-black text-lg transition duration-200">
-                            📖 Historial y Cancelados
+                            Historial y Cancelados
                         </button>
                     </div>
 
@@ -63,9 +63,9 @@
                                         $fechaReservaCompleta = \Carbon\Carbon::parse($reserva->fecha . ' ' . $reserva->hora_inicio);
                                         $createdAt = \Carbon\Carbon::parse($reserva->created_at);
                                         
-                                        $esReciente = \Carbon\Carbon::now()->subMinutes(30)->lessThanOrEqualTo($createdAt);
                                         $faltaMasDe6Horas = \Carbon\Carbon::now()->diffInHours($fechaReservaCompleta, false) >= 6;
-                                        $puedeOperar = $faltaMasDe6Horas || $esReciente;
+                                        // Regla estricta: Solo se puede operar (editar/cancelar) si faltan 6 horas o mas
+                                        $puedeOperar = $faltaMasDe6Horas;
                                         $yaIniciada = \Carbon\Carbon::now()->greaterThanOrEqualTo($fechaReservaCompleta);
                                         
                                         $fechaExpiracion = $createdAt->copy()->addMinutes(30);
@@ -81,37 +81,41 @@
 
                                         <div class="py-4 flex flex-col items-center justify-center min-h-[140px]">
                                             @if($reserva->estado === 'Verificado')
-                                                <div class="bg-white p-1 rounded-lg border border-gray-200">
-                                                    <img src="https://chart.googleapis.com/chart?chs=110x110&cht=qr&chl={{ urlencode($reserva->id) }}&choe=UTF-8" class="w-24 h-24">
+                                                <div class="bg-white p-1 rounded-lg border border-gray-200 flex flex-col items-center">
+                                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data={{ urlencode($reserva->codigo_acceso) }}" alt="QR de acceso" class="w-24 h-24 mb-1">
+                                                    <p class="text-xs font-mono">[{{ $reserva->codigo_acceso }}]</p>
+                                                    <span class="text-[10px] font-black text-green-700 uppercase bg-green-50 px-2 py-0.5 rounded">Verificado</span>
                                                 </div>
                                             @elseif($reserva->estado === 'Pendiente')
-                                                <span class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-black rounded-full block mb-2">⏳ PENDIENTE</span>
+                                                <span class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-black rounded-full block mb-2">PENDIENTE</span>
                                                 @if($reserva->metodo_pago === 'yape' && $segundosRestantes > 0)
                                                     <div class="text-xs font-bold text-red-600 bg-red-50 p-2 rounded-lg border border-red-100" 
                                                          x-data="{ seconds: {{ $segundosRestantes }}, formatTime() { let m = Math.floor(this.seconds / 60); let s = this.seconds % 60; return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; } }" 
                                                          x-init="setInterval(() => { if(seconds > 0) seconds--; else window.location.reload(); }, 1000)">
                                                         Expira en: <span class="font-mono font-black" x-text="formatTime()"></span>
                                                     </div>
+                                                @elseif($reserva->metodo_pago === 'yape')
+                                                    <span class="text-[11px] text-gray-500 font-bold bg-gray-100 px-3 py-1.5 rounded-lg text-center">Pago registrado</span>
                                                 @else
-                                                    <span class="text-[11px] text-gray-500 font-bold bg-gray-100 px-3 py-1.5 rounded-lg text-center">Pago registrado 👍</span>
+                                                    <span class="text-[11px] text-gray-500 font-bold bg-gray-100 px-3 py-1.5 rounded-lg text-center">A pagar en caja</span>
                                                 @endif
                                             @endif
                                         </div>
 
                                         <div class="mt-2 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
                                             @if(!$yaIniciada && $puedeOperar && $reserva->reprogramaciones < 2)
-                                                <button @click="showReprogramarModal = true; reservaId = '{{ $reserva->id }}'" class="text-xs font-bold bg-white text-[#0b3b24] border border-[#0b3b24] py-2 rounded-lg hover:bg-gray-50">🔄 Editar</button>
+                                                <button @click="showReprogramarModal = true; reservaId = '{{ $reserva->id }}'" class="text-xs font-bold bg-white text-[#0b3b24] border border-[#0b3b24] py-2 rounded-lg hover:bg-gray-50">Editar</button>
                                             @else
-                                                <button disabled class="text-xs font-bold bg-gray-50 text-gray-400 border border-gray-200 py-2 rounded-lg" title="{{ $yaIniciada ? 'Partido en curso/pasado' : 'Reglas de tiempo excedidas' }}">🚫 Bloqueado</button>
+                                                <button disabled class="text-xs font-bold bg-gray-50 text-gray-400 border border-gray-200 py-2 rounded-lg" title="No puedes editar porque faltan menos de 6 horas">Bloqueado</button>
                                             @endif
 
                                             @if(!$yaIniciada && $puedeOperar)
                                                 <form method="POST" action="{{ route('reservas.cancelar', $reserva->id) }}" onsubmit="return confirm('¿Seguro que deseas cancelar?')">
                                                     @csrf
-                                                    <button type="submit" class="w-full text-xs font-bold bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg hover:bg-red-100">❌ Cancelar</button>
+                                                    <button type="submit" class="w-full text-xs font-bold bg-red-50 text-red-600 border border-red-200 py-2 rounded-lg hover:bg-red-100">Cancelar</button>
                                                 </form>
                                             @else
-                                                <button disabled class="w-full text-xs font-bold bg-gray-50 text-gray-400 border border-gray-200 py-2 rounded-lg">🚫 Bloqueado</button>
+                                                <button disabled class="w-full text-xs font-bold bg-gray-50 text-gray-400 border border-gray-200 py-2 rounded-lg" title="No puedes cancelar porque faltan menos de 6 horas">Bloqueado</button>
                                             @endif
                                         </div>
                                     </div>
@@ -135,7 +139,7 @@
                                         <div>
                                             <form method="POST" action="{{ route('reservas.eliminar', $reserva->id) }}" onsubmit="return confirm('¿Eliminar del historial?')">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="text-red-500 hover:bg-red-100 p-2 rounded-lg transition" title="Eliminar registro">🗑️</button>
+                                                <button type="submit" class="text-red-500 hover:bg-red-100 px-3 py-1 font-bold text-xs rounded-lg transition" title="Eliminar registro">Eliminar</button>
                                             </form>
                                         </div>
                                     </div>
@@ -188,28 +192,40 @@
             @if(isset($canchas) && $canchas->count() > 0)
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     @foreach($canchas as $cancha)
-                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden">
-                            <div class="absolute top-4 right-4 bg-[#7cb518] text-white text-xs font-black px-3 py-1 rounded-full z-10 shadow-md">Total: S/. {{ number_format($cancha->total_reserva, 2) }}</div>
-                            <div class="h-48 bg-gray-100 border-b flex items-center justify-center">
-                                @if($cancha->foto)
-                                    <img src="{{ asset('storage/' . $cancha->foto) }}" class="w-full h-full object-cover">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                            <div class="absolute top-4 right-4 bg-gradient-to-r from-[#7cb518] to-[#5a8b0d] text-white text-sm font-black px-4 py-1.5 rounded-full z-10 shadow-lg border border-[#7cb518]/50">S/. {{ number_format($cancha->total_reserva, 2) }}</div>
+                            <div class="h-52 bg-gray-100 border-b flex items-center justify-center relative overflow-hidden group">
+                                @if($cancha->foto && \Storage::disk('public')->exists($cancha->foto))
+                                    <img src="{{ asset('storage/' . $cancha->foto) }}" alt="{{ $cancha->nombre }}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110">
                                 @else
-                                    <span class="text-gray-400">Sin foto</span>
+                                    <div class="w-full h-full bg-gradient-to-br from-gray-50 to-gray-200 flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-16 h-16 mb-2 text-gray-300 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <span class="text-sm font-bold tracking-wider uppercase">Sin Foto</span>
+                                    </div>
                                 @endif
+                                <div class="absolute inset-0 bg-[#0b3b24]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             </div>
-                            <div class="p-6 flex-grow">
-                                <h3 class="text-xl font-black text-[#0b3b24] mb-2">{{ $cancha->nombre }}</h3>
-                                <p class="text-sm font-semibold text-gray-600 mb-2">{{ $cancha->superficie }} - {{ $cancha->iluminacion }}</p>
-                                
-                                <div class="mt-1">
-                                    <span class="inline-flex items-center text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-lg">
-                                        Modalidad: {{ $cancha->tipo_partido }}
-                                    </span>
+                            <div class="p-6 flex-grow flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-2xl font-black text-[#0b3b24] mb-1 tracking-tight">{{ $cancha->nombre }}</h3>
+                                    <div class="flex items-center text-gray-500 text-sm mb-4 space-x-2 font-medium">
+                                        <svg class="w-4 h-4 text-[#7cb518]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        <span>{{ $cancha->superficie }}</span>
+                                        <span>&bull;</span>
+                                        <svg class="w-4 h-4 text-[#7cb518]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                        <span>{{ $cancha->iluminacion }}</span>
+                                    </div>
+                                    <div class="mt-2 mb-4">
+                                        <span class="inline-flex items-center text-xs font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl uppercase tracking-wide">
+                                            🎯 {{ $cancha->tipo_partido }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="p-6 pt-0 mt-auto">
-                                <button @click="showPaymentModal = true; canchaSeleccionada = '{{ $cancha->nombre }}'; canchaId = '{{ $cancha->id }}'; precioSeleccionado = '{{ number_format($cancha->total_reserva, 2, '.', '') }}'" class="w-full bg-white border-2 border-[#7cb518] text-[#7cb518] hover:bg-[#7cb518] hover:text-white font-black py-3 rounded-xl transition duration-300">
-                                    RESERVAR AHORA
+                                <button @click="showPaymentModal = true; canchaSeleccionada = '{{ $cancha->nombre }}'; canchaId = '{{ $cancha->id }}'; precioSeleccionado = '{{ number_format($cancha->total_reserva, 2, '.', '') }}'" class="w-full bg-[#f8fbf3] border-2 border-[#7cb518] text-[#689f15] hover:bg-[#7cb518] hover:text-white font-black py-3.5 rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-2 group/btn">
+                                    <span>RESERVAR AHORA</span>
+                                    <svg class="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                 </button>
                             </div>
                         </div>
@@ -250,6 +266,14 @@
                             <button @click="metodoPago = 'efectivo'" type="button" :class="metodoPago === 'efectivo' ? 'bg-[#0b3b24] text-white' : 'bg-white text-gray-600'" class="flex-1 py-3 border rounded-xl font-bold">Efectivo en Caja</button>
                         </div>
                         <div x-show="metodoPago === 'yape'" class="text-center space-y-4">
+                            @if(\Storage::disk('public')->exists('yape_qr.png'))
+                                <div class="flex justify-center mb-2">
+                                    <img src="{{ asset('storage/yape_qr.png') }}?v={{ time() }}" alt="Escanea para pagar con Yape" class="w-48 h-48 border rounded-xl shadow-sm">
+                                </div>
+                                <p class="text-xs text-gray-500 mb-2">Escanea el código QR y luego ingresa el número de operación.</p>
+                            @else
+                                <p class="text-xs text-red-500 font-bold mb-2">El código QR de Yape aún no ha sido configurado por el administrador.</p>
+                            @endif
                             <div class="text-left">
                                 <label class="block text-xs font-bold text-gray-700 mb-1">Código de Operación</label>
                                 <input type="text" name="numero_operacion" placeholder="Número de transacción de Yape" class="w-full border-gray-300 rounded-xl shadow-sm">

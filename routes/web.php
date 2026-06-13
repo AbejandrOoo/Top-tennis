@@ -76,9 +76,16 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     // Justo para cuando el cliente llega a la puerta y le marcamos que ya esta adentro del lugar
     Route::post('/reservas/{id}/checkin', [AdminController::class, 'checkin'])->name('admin.reservas.checkin');
 
+    // Rutas para la nueva pantalla de verificación por código
+    Route::get('/reservas/escanear-qr', [AdminController::class, 'showScanForm'])->name('admin.reservas.showscan');
+    Route::post('/reservas/verificar-qr', [AdminController::class, 'verifyQrCode'])->name('admin.reservas.verifyqr');
+
     // Tarifas solo necesita listar crear editar y borrar para este sistema
     // Se deja fuera la vista de detalle porque no se usa en la pantalla actual
     Route::resource('tarifas', TarifaController::class)->except(['show']);
+    
+    // Configuración para subir el QR de Yape
+    Route::post('/config/yape', [AdminController::class, 'updateYapeQr'])->name('admin.config.yape');
 });
 
 // Rutas de login registro y recuperacion de cuenta

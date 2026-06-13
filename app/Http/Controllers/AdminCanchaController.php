@@ -95,12 +95,31 @@ class AdminCanchaController extends Controller
 
     public function deshabilitar($id)
     {
-        // En vez de borrar una cancha se marca como mantenimiento
-        // Asi no aparece para reservas nuevas pero se conserva su registro
         $cancha = Cancha::findOrFail($id);
-        $cancha->update(['estado' => 'En Mantenimiento']);
 
-        return redirect()->route('admin.canchas.index')->with('success', 'La cancha ha sido deshabilitada correctamente.');
+        if ($cancha->estado === 'Disponible') {
+            // Revisar si hay reservas activas a futuro
+            $reservasActivas = \App\Models\Reserva::where('cancha_id', $cancha->id)
+                ->whereIn('estado', ['Pendiente', 'Verificado'])
+                ->where(function($q) {
+                    $q->where('fecha', '>', now()->toDateString())
+                      ->orWhere(function($subQ) {
+                          $subQ->where('fecha', now()->toDateString())
+                               ->where('hora_inicio', '>=', now()->toTimeString());
+                      });
+                })
+                ->exists();
+
+            if ($reservasActivas) {
+                return redirect()->route('admin.canchas.index')->with('error', 'No se puede poner la cancha en mantenimiento porque tiene reservas activas pendientes.');
+            }
+
+            $cancha->update(['estado' => 'En Mantenimiento']);
+            return redirect()->route('admin.canchas.index')->with('success', 'La cancha ha sido deshabilitada (En Mantenimiento) correctamente.');
+        } else {
+            $cancha->update(['estado' => 'Disponible']);
+            return redirect()->route('admin.canchas.index')->with('success', 'La cancha ha sido habilitada correctamente.');
+        }
     }
 
     public function destroy($id)
